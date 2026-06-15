@@ -1,0 +1,9 @@
+# LocalChat 依存パッケージ
+# 完全オフライン環境を想定し、外部サービスに依存するパッケージは含めない
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+SQLAlchemy==2.0.36
+python-multipart==0.0.20
+pydantic==2.10.4
+# TLS自己署名証明書の生成・自動更新に使用（TLSを使わない場合は任意）
+cryptography==48.0.1

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LocalChat 基本設計書 | 要件定義書</title>
+  <link rel="stylesheet" href="assets/design.css" />
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">Local<span>Chat</span></div>
+      <div class="sub" data-ja="基本設計書 v0.1.0" data-en="Basic Design Document v0.1.0">基本設計書 v0.1.0</div>
+      <nav>
+        <a href="index.html" data-ja="概要・全体像" data-en="Overview">概要・全体像</a>
+        <a href="architecture.html" data-ja="アーキテクチャ図" data-en="Architecture">アーキテクチャ図</a>
+        <a href="class-diagram.html" data-ja="クラス図・ER図" data-en="Class &amp; ER Diagram">クラス図・ER図</a>
+        <a href="sequence.html" data-ja="シーケンス図" data-en="Sequence Diagrams">シーケンス図</a>
+        <a href="flowchart.html" data-ja="フローチャート図" data-en="Flowcharts">フローチャート図</a>
+        <div class="nav-section" data-ja="ツール" data-en="Tools">ツール</div>
+        <a href="diagram-lab.html" data-ja="図エラー検証ラボ" data-en="Diagram Lab">図エラー検証ラボ</a>
+        <div class="nav-section" data-ja="関連資料" data-en="References">関連資料</div>
+        <a href="要件定義書.html" class="active" data-ja="要件定義書" data-en="Requirements (JA)">要件定義書</a>
+      </nav>
+    </aside>
+
+    <main class="content">
+      <h1 data-ja="要件定義書" data-en="Requirements Definition">要件定義書</h1>
+      <p class="lead"
+         data-ja="完全オフライン環境で動作する社内向けチャットアプリケーション「LocalChat」の要件定義書です。本書では目的・スコープ・機能要件・非機能要件・制約条件を定義します。"
+         data-en="Requirements definition for &quot;LocalChat&quot;, an internal chat application that runs in a fully offline environment. This document defines the purpose, scope, functional and non-functional requirements, and constraints.">完全オフライン環境で動作する社内向けチャットアプリケーション「LocalChat」の要件定義書です。本書では目的・スコープ・機能要件・非機能要件・制約条件を定義します。</p>
+
+      <h2 data-ja="1. 目的・背景" data-en="1. Purpose &amp; Background">1. 目的・背景</h2>
+      <div class="card">
+        <p data-ja="社内コミュニケーションを、外部サービスへ一切依存せずに行うことを目的とする。クラウドSaaS型チャットは情報漏えいリスクや閉域網要件への不適合が課題となるため、社内オンプレミス環境（閉域網）内だけで完結するチャット基盤を構築する。"
+           data-en="The purpose is to enable internal communication without any dependency on external services. Cloud SaaS chat tools pose information-leak risks and do not fit closed-network requirements, so we build a chat platform that is fully self-contained within the on-premises (closed) network.">社内コミュニケーションを、外部サービスへ一切依存せずに行うことを目的とする。クラウドSaaS型チャットは情報漏えいリスクや閉域網要件への不適合が課題となるため、社内オンプレミス環境（閉域網）内だけで完結するチャット基盤を構築する。</p>
+      </div>
+
+      <h2 data-ja="2. スコープ" data-en="2. Scope">2. スコープ</h2>
+      <div class="card">
+        <table>
+          <thead><tr>
+            <th data-ja="区分" data-en="Category">区分</th>
+            <th data-ja="内容" data-en="Description">内容</th>
+          </tr></thead>
+          <tbody>
+            <tr><td data-ja="対象（スコープ内）" data-en="In scope">対象（スコープ内）</td><td data-ja="認証、サーバー（ワークスペース）／チャンネル、メッセージ送受信、スレッド、リアクション、DM、ファイル共有、Markdown・図表描画、メンション通知、招待コード参加、複数アカウント切替、TLS／閉域網アクセス制御" data-en="Authentication, servers (workspaces)/channels, messaging, threads, reactions, DMs, file sharing, Markdown and diagram rendering, mention notifications, invite-code join, multi-account switching, TLS and closed-network access control">認証、サーバー（ワークスペース）／チャンネル、メッセージ送受信、スレッド、リアクション、DM、ファイル共有、Markdown・図表描画、メンション通知、招待コード参加、複数アカウント切替、TLS／閉域網アクセス制御</td></tr>
+            <tr><td data-ja="対象外（スコープ外）" data-en="Out of scope">対象外（スコープ外）</td><td data-ja="ボイス／ビデオチャンネル（現フェーズ非対応）、外部SaaS連携、モバイル専用ネイティブアプリ、Push通知サーバー" data-en="Voice/video channels (not supported in this phase), external SaaS integration, dedicated mobile native apps, push notification servers">ボイス／ビデオチャンネル（現フェーズ非対応）、外部SaaS連携、モバイル専用ネイティブアプリ、Push通知サーバー</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 data-ja="3. 用語定義" data-en="3. Glossary">3. 用語定義</h2>
+      <div class="card">
+        <table>
+          <thead><tr>
+            <th data-ja="用語" data-en="Term">用語</th>
+            <th data-ja="意味" data-en="Meaning">意味</th>
+          </tr></thead>
+          <tbody>
+            <tr><td data-ja="閉域網" data-en="Closed network">閉域網</td><td data-ja="インターネットに接続されていない社内LAN（プライベートネットワーク）。" data-en="A corporate LAN (private network) not connected to the Internet.">インターネットに接続されていない社内LAN（プライベートネットワーク）。</td></tr>
+            <tr><td data-ja="サーバー（ワークスペース）" data-en="Server (workspace)">サーバー（ワークスペース）</td><td data-ja="チャンネルやメンバーを束ねる単位。" data-en="A unit that groups channels and members.">チャンネルやメンバーを束ねる単位。</td></tr>
+            <tr><td data-ja="DM" data-en="DM">DM</td><td data-ja="ダイレクトメッセージ。1対1またはグループの個別会話。" data-en="Direct message. One-to-one or group private conversation.">ダイレクトメッセージ。1対1またはグループの個別会話。</td></tr>
+            <tr><td data-ja="招待コード" data-en="Invite code">招待コード</td><td data-ja="サーバーへの参加に必要なコード。管理者／モデレーターが発行する。" data-en="A code required to join a server, issued by an admin/moderator.">サーバーへの参加に必要なコード。管理者／モデレーターが発行する。</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 data-ja="4. 機能要件" data-en="4. Functional Requirements">4. 機能要件</h2>
+      <div class="card">
+        <table>
+          <thead><tr>
+            <th data-ja="ID" data-en="ID">ID</th>
+            <th data-ja="機能" data-en="Feature">機能</th>
+            <th data-ja="要件内容" data-en="Requirement">要件内容</th>
+          </tr></thead>
+          <tbody>
+            <tr><td>FR-01</td><td data-ja="認証" data-en="Authentication">認証</td><td data-ja="ユーザー登録・ログインを独自DBで行う。パスワードは PBKDF2-HMAC-SHA256 でハッシュ化し、トークンは HMAC で署名する（外部依存なし）。" data-en="User registration and login via an internal DB. Passwords hashed with PBKDF2-HMAC-SHA256; tokens signed with HMAC (no external deps).">ユーザー登録・ログインを独自DBで行う。パスワードは PBKDF2-HMAC-SHA256 でハッシュ化し、トークンは HMAC で署名する（外部依存なし）。</td></tr>
+            <tr><td>FR-02</td><td data-ja="複数アカウント" data-en="Multi-account">複数アカウント</td><td data-ja="1台の端末で複数アカウントを保持し、ワンクリックで切り替えできる。" data-en="Hold multiple accounts on one device and switch with one click.">1台の端末で複数アカウントを保持し、ワンクリックで切り替えできる。</td></tr>
+            <tr><td>FR-03</td><td data-ja="プロフィール" data-en="Profile">プロフィール</td><td data-ja="表示名・アイコン・ステータスメッセージを設定できる。" data-en="Set display name, icon, and status message.">表示名・アイコン・ステータスメッセージを設定できる。</td></tr>
+            <tr><td>FR-04</td><td data-ja="サーバー／チャンネル" data-en="Server/Channel">サーバー／チャンネル</td><td data-ja="サーバー（ワークスペース）とテキストチャンネルを作成・一覧・閲覧できる。" data-en="Create, list, and view servers (workspaces) and text channels.">サーバー（ワークスペース）とテキストチャンネルを作成・一覧・閲覧できる。</td></tr>
+            <tr><td>FR-05</td><td data-ja="招待コード参加" data-en="Invite-code join">招待コード参加</td><td data-ja="管理者／モデレーターがコードを発行し（使用回数・有効期限の設定可）、保有者のみ参加できる。直接参加は無効。" data-en="Admins/moderators issue codes (with optional usage count and expiry); only code holders can join. Direct join is disabled.">管理者／モデレーターがコードを発行し（使用回数・有効期限の設定可）、保有者のみ参加できる。直接参加は無効。</td></tr>
+            <tr><td>FR-06</td><td data-ja="ロール管理" data-en="Role management">ロール管理</td><td data-ja="管理者／モデレーター／一般ユーザーの権限を管理する。" data-en="Manage permissions for admin / moderator / general user.">管理者／モデレーター／一般ユーザーの権限を管理する。</td></tr>
+            <tr><td>FR-07</td><td data-ja="メッセージ" data-en="Messaging">メッセージ</td><td data-ja="送信・編集・削除・スレッド返信・絵文字リアクションができる。" data-en="Send, edit, delete, thread reply, and emoji reactions.">送信・編集・削除・スレッド返信・絵文字リアクションができる。</td></tr>
+            <tr><td>FR-08</td><td data-ja="Markdown" data-en="Markdown">Markdown</td><td data-ja="見出し・太字・斜体・取り消し線・コード／コードブロック・引用・リスト・テーブル・リンクに対応（XSS対策済みの自前実装）。" data-en="Headings, bold, italic, strikethrough, code/code blocks, quotes, lists, tables, links (in-house implementation with XSS protection).">見出し・太字・斜体・取り消し線・コード／コードブロック・引用・リスト・テーブル・リンクに対応（XSS対策済みの自前実装）。</td></tr>
+            <tr><td>FR-09</td><td data-ja="図の埋め込み" data-en="Diagram embedding">図の埋め込み</td><td data-ja="Mermaid（ブラウザ内描画）と PlantUML（社内 jar によるサーバー側描画・任意設定）に対応する。" data-en="Support Mermaid (in-browser) and PlantUML (server-side via internal jar, optional).">Mermaid（ブラウザ内描画）と PlantUML（社内 jar によるサーバー側描画・任意設定）に対応する。</td></tr>
+            <tr><td>FR-10</td><td data-ja="メンション" data-en="Mention">メンション</td><td data-ja="<code>@ユーザー名</code> による通知を行う。" data-en="Notify via <code>@username</code>."><code>@ユーザー名</code> による通知を行う。</td></tr>
+            <tr><td>FR-11</td><td>DM</td><td data-ja="1対1／グループのダイレクトメッセージを送受信できる。" data-en="Send and receive one-to-one and group direct messages.">1対1／グループのダイレクトメッセージを送受信できる。</td></tr>
+            <tr><td>FR-12</td><td data-ja="ファイル共有" data-en="File sharing">ファイル共有</td><td data-ja="画像・PDF・Officeファイル等をアップロード／ダウンロードできる。ファイルは社内サーバーのローカルへ保存する。" data-en="Upload/download images, PDFs, Office files, etc. Files stored locally on the internal server.">画像・PDF・Officeファイル等をアップロード／ダウンロードできる。ファイルは社内サーバーのローカルへ保存する。</td></tr>
+            <tr><td>FR-13</td><td data-ja="通知" data-en="Notification">通知</td><td data-ja="未読バッジを表示し、メンション時にブラウザ標準のデスクトップ通知を行う。" data-en="Show unread badges and use the browser's standard desktop notification on mentions.">未読バッジを表示し、メンション時にブラウザ標準のデスクトップ通知を行う。</td></tr>
+            <tr><td>FR-14</td><td data-ja="リアルタイム通信" data-en="Realtime">リアルタイム通信</td><td data-ja="WebSocket による双方向のリアルタイム配信を行う（外部ブローカー不使用）。" data-en="Bidirectional realtime delivery via WebSocket (no external broker).">WebSocket による双方向のリアルタイム配信を行う（外部ブローカー不使用）。</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 data-ja="5. 非機能要件" data-en="5. Non-functional Requirements">5. 非機能要件</h2>
+      <div class="card">
+        <table>
+          <thead><tr>
+            <th data-ja="ID" data-en="ID">ID</th>
+            <th data-ja="分類" data-en="Category">分類</th>
+            <th data-ja="要件内容" data-en="Requirement">要件内容</th>
+          </tr></thead>
+          <tbody>
+            <tr><td>NFR-01</td><td data-ja="オフライン性" data-en="Offline">オフライン性</td><td data-ja="外部CDN・クラウドストレージ・Push通知サーバーを一切使用しない。依存ライブラリ・ランタイム・図表エンジンをすべて同梱する。" data-en="Use no external CDN, cloud storage, or push servers. Bundle all libraries, runtime, and diagram engines.">外部CDN・クラウドストレージ・Push通知サーバーを一切使用しない。依存ライブラリ・ランタイム・図表エンジンをすべて同梱する。</td></tr>
+            <tr><td>NFR-02</td><td data-ja="セキュリティ（閉域網）" data-en="Security (closed network)">セキュリティ（閉域網）</td><td data-ja="プライベートIP以外からのHTTP／WebSocket を既定で拒否する（アプリ層・OS層・バインド範囲の多層防御）。" data-en="Reject HTTP/WebSocket from non-private IPs by default (defense in depth across app, OS, and bind scope).">プライベートIP以外からのHTTP／WebSocket を既定で拒否する（アプリ層・OS層・バインド範囲の多層防御）。</td></tr>
+            <tr><td>NFR-03</td><td data-ja="通信暗号化" data-en="Encryption in transit">通信暗号化</td><td data-ja="社内LAN内でも TLS（HTTPS／WSS）で通信できる。自己署名証明書の自動生成・自動更新に対応する。" data-en="Communicate over TLS (HTTPS/WSS) even within the LAN. Support auto-generation/renewal of self-signed certs.">社内LAN内でも TLS（HTTPS／WSS）で通信できる。自己署名証明書の自動生成・自動更新に対応する。</td></tr>
+            <tr><td>NFR-04</td><td data-ja="外部依存の最小化" data-en="Minimal dependencies">外部依存の最小化</td><td data-ja="パスワードハッシュ・トークン署名を Python 標準ライブラリのみで実装する（bcrypt／jose 不使用）。" data-en="Implement password hashing and token signing using only the Python standard library (no bcrypt/jose).">パスワードハッシュ・トークン署名を Python 標準ライブラリのみで実装する（bcrypt／jose 不使用）。</td></tr>
+            <tr><td>NFR-05</td><td data-ja="可搬性" data-en="Portability">可搬性</td><td data-ja="単一ホスト上の uvicorn プロセスで全機能を提供し、DB・ファイル・証明書・ランタイムをローカルに保持する。" data-en="Provide all features in a single uvicorn process on one host, keeping DB, files, certs, and runtime local.">単一ホスト上の uvicorn プロセスで全機能を提供し、DB・ファイル・証明書・ランタイムをローカルに保持する。</td></tr>
+            <tr><td>NFR-06</td><td data-ja="可用性・堅牢性" data-en="Availability / robustness">可用性・堅牢性</td><td data-ja="PlantUML 未導入時はソース表示へフォールバックするなど、補助機能の欠如で本体機能を停止させない。" data-en="Do not halt core features when auxiliary features are missing, e.g. fall back to source display when PlantUML is unavailable.">PlantUML 未導入時はソース表示へフォールバックするなど、補助機能の欠如で本体機能を停止させない。</td></tr>
+            <tr><td>NFR-07</td><td data-ja="ビルド不要" data-en="No build step">ビルド不要</td><td data-ja="フロントエンドはバニラ HTML／CSS／JavaScript とし、ビルド工程・外部CDN を不要とする。" data-en="Frontend uses vanilla HTML/CSS/JavaScript, requiring no build step or external CDN.">フロントエンドはバニラ HTML／CSS／JavaScript とし、ビルド工程・外部CDN を不要とする。</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 data-ja="6. 技術スタック" data-en="6. Technology Stack">6. 技術スタック</h2>
+      <div class="card">
+        <table>
+          <thead><tr>
+            <th data-ja="区分" data-en="Category">区分</th>
+            <th data-ja="採用技術" data-en="Technology">採用技術</th>
+          </tr></thead>
+          <tbody>
+            <tr><td data-ja="バックエンド" data-en="Backend">バックエンド</td><td>Python 3.11+ / FastAPI</td></tr>
+            <tr><td data-ja="リアルタイム通信" data-en="Realtime">リアルタイム通信</td><td data-ja="WebSocket（FastAPI / uvicorn）" data-en="WebSocket (FastAPI / uvicorn)">WebSocket（FastAPI / uvicorn）</td></tr>
+            <tr><td data-ja="データベース" data-en="Database">データベース</td><td data-ja="SQLite（社内ローカル・SQLAlchemy 経由）" data-en="SQLite (local, via SQLAlchemy)">SQLite（社内ローカル・SQLAlchemy 経由）</td></tr>
+            <tr><td data-ja="フロントエンド" data-en="Frontend">フロントエンド</td><td data-ja="バニラ JavaScript / CSS（ビルド不要・外部CDN不使用）" data-en="Vanilla JavaScript / CSS (no build, no external CDN)">バニラ JavaScript / CSS（ビルド不要・外部CDN不使用）</td></tr>
+            <tr><td data-ja="図表描画" data-en="Diagrams">図表描画</td><td data-ja="Mermaid（同梱） / PlantUML（同梱 jar + JRE17）" data-en="Mermaid (bundled) / PlantUML (bundled jar + JRE17)">Mermaid（同梱） / PlantUML（同梱 jar + JRE17）</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 data-ja="7. 制約条件・前提" data-en="7. Constraints &amp; Assumptions">7. 制約条件・前提</h2>
+      <div class="card">
+        <ul>
+          <li data-ja="運用環境はインターネットに接続されない社内オンプレミス（閉域網）であること。" data-en="The operating environment is an on-premises, Internet-disconnected closed network.">運用環境はインターネットに接続されない社内オンプレミス（閉域網）であること。</li>
+          <li data-ja="社内固有の設定は環境変数（<code>.env</code>）へ外出しし、OSS 公開を前提とする。" data-en="Site-specific settings are externalized to environment variables (<code>.env</code>), assuming OSS publication.">社内固有の設定は環境変数（<code>.env</code>）へ外出しし、OSS 公開を前提とする。</li>
+          <li data-ja="PlantUML 描画には Java 11 以上が必要（推奨は同梱の JRE17）。" data-en="PlantUML rendering requires Java 11+ (the bundled JRE17 is recommended).">PlantUML 描画には Java 11 以上が必要（推奨は同梱の JRE17）。</li>
+          <li data-ja="本番運用前に <code>SECRET_KEY</code> を推測困難な値へ変更すること。" data-en="Change <code>SECRET_KEY</code> to a hard-to-guess value before production.">本番運用前に <code>SECRET_KEY</code> を推測困難な値へ変更すること。</li>
+          <li data-ja="信頼できる社内利用を前提とする（PlantUML はサーバー上で jar を実行する）。" data-en="Assumes trusted internal use (PlantUML executes the jar on the server).">信頼できる社内利用を前提とする（PlantUML はサーバー上で jar を実行する）。</li>
+        </ul>
+      </div>
+
+      <footer data-ja="LocalChat 基本設計書 — 要件定義書" data-en="LocalChat Basic Design Document — Requirements Definition">LocalChat 基本設計書 — 要件定義書</footer>
+    </main>
+  </div>
+
+  <script src="../frontend/static/vendor/mermaid.min.js"></script>
+  <script src="assets/i18n.js"></script>
+</body>
+</html>

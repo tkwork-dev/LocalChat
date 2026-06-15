@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LocalChat 基本設計書 | フローチャート図</title>
+  <link rel="stylesheet" href="assets/design.css" />
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">Local<span>Chat</span></div>
+      <div class="sub" data-ja="基本設計書 v0.1.0" data-en="Basic Design Document v0.1.0">基本設計書 v0.1.0</div>
+      <nav>
+        <a href="index.html" data-ja="概要・全体像" data-en="Overview">概要・全体像</a>
+        <a href="architecture.html" data-ja="アーキテクチャ図" data-en="Architecture">アーキテクチャ図</a>
+        <a href="class-diagram.html" data-ja="クラス図・ER図" data-en="Class &amp; ER Diagram">クラス図・ER図</a>
+        <a href="sequence.html" data-ja="シーケンス図" data-en="Sequence Diagrams">シーケンス図</a>
+        <a href="flowchart.html" class="active" data-ja="フローチャート図" data-en="Flowcharts">フローチャート図</a>
+        <div class="nav-section" data-ja="ツール" data-en="Tools">ツール</div>
+        <a href="diagram-lab.html" data-ja="図エラー検証ラボ" data-en="Diagram Lab">図エラー検証ラボ</a>
+        <div class="nav-section" data-ja="関連資料" data-en="References">関連資料</div>
+        <a href="要件定義書.html" data-ja="要件定義書" data-en="Requirements (JA)">要件定義書</a>
+      </nav>
+    </aside>
+
+    <main class="content">
+      <h1 data-ja="フローチャート図" data-en="Flowcharts">フローチャート図</h1>
+      <p class="lead" data-ja="アクセス制御・認証・権限判定・図表描画などの分岐ロジックを示します。" data-en="Branching logic for access control, authentication, authorization, and diagram rendering.">アクセス制御・認証・権限判定・図表描画などの分岐ロジックを示します。</p>
+
+      <h2 data-ja="1. リクエスト処理の全体フロー" data-en="1. Overall Request Flow">1. リクエスト処理の全体フロー</h2>
+      <div class="diagram">
+        <pre class="mermaid" data-lang="ja">
+flowchart TD
+  S(["リクエスト受信<br/>HTTP / WebSocket"]) --> G{"プライベートIPか？<br/>PrivateNetworkGuard"}
+  G -- いいえ --> R403["403 / WS close(4403)<br/>社外アクセス拒否"]
+  G -- はい --> T{"認証が必要な<br/>エンドポイントか？"}
+  T -- いいえ --> H["ハンドラ実行"]
+  T -- はい --> AUTH{"Bearerトークン<br/>有効？"}
+  AUTH -- いいえ --> R401["401 認証エラー"]
+  AUTH -- はい --> ACT{"ユーザーが<br/>有効(is_active)？"}
+  ACT -- いいえ --> R401
+  ACT -- はい --> H
+  H --> RESP(["レスポンス返却"])
+        </pre>
+        <pre class="mermaid" data-lang="en">
+flowchart TD
+  S(["Request received<br/>HTTP / WebSocket"]) --> G{"Private IP?<br/>PrivateNetworkGuard"}
+  G -- No --> R403["403 / WS close(4403)<br/>reject external access"]
+  G -- Yes --> T{"Auth-required<br/>endpoint?"}
+  T -- No --> H["run handler"]
+  T -- Yes --> AUTH{"Bearer token<br/>valid?"}
+  AUTH -- No --> R401["401 auth error"]
+  AUTH -- Yes --> ACT{"User active<br/>(is_active)?"}
+  ACT -- No --> R401
+  ACT -- Yes --> H
+  H --> RESP(["return response"])
+        </pre>
+        <div class="caption" data-ja="図12. 全リクエスト共通の処理フロー。ネットワーク制御 → 認証 → ユーザー有効性の順に検証する。" data-en="Fig. 12 Common flow for all requests: network control, then authentication, then user validity.">図12. 全リクエスト共通の処理フロー。ネットワーク制御 → 認証 → ユーザー有効性の順に検証する。</div>
+      </div>
+
+      <h2 data-ja="2. 権限判定フロー（require_role）" data-en="2. Authorization Flow (require_role)">2. 権限判定フロー（require_role）</h2>
+      <div class="diagram">
+        <pre class="mermaid" data-lang="ja">
+flowchart TD
+  S(["操作要求<br/>（例: チャンネル作成）"]) --> M{"サーバーの<br/>メンバーか？"}
+  M -- いいえ --> E403a["403 メンバーではありません"]
+  M -- はい --> R{"必要ロールを<br/>満たすか？"}
+  R -- いいえ --> E403b["403 権限がありません"]
+  R -- はい --> OK(["操作を許可"])
+        </pre>
+        <pre class="mermaid" data-lang="en">
+flowchart TD
+  S(["Operation request<br/>(e.g. create channel)"]) --> M{"Member of<br/>the server?"}
+  M -- No --> E403a["403 not a member"]
+  M -- Yes --> R{"Has required<br/>role?"}
+  R -- No --> E403b["403 no permission"]
+  R -- Yes --> OK(["allow operation"])
+        </pre>
+        <div class="caption" data-ja="図13. 権限判定。所属確認 → ロール確認の二段階。例えば招待発行は admin / moderator、ロール変更・キックは admin のみ。" data-en="Fig. 13 Authorization. Two steps: membership, then role. E.g. issuing invites needs admin/moderator; role change and kick need admin only.">図13. 権限判定。所属確認 → ロール確認の二段階。例えば招待発行は admin / moderator、ロール変更・キックは admin のみ。</div>
+      </div>
+
+      <h2 data-ja="3. メッセージ送信・編集フロー（フロントエンド）" data-en="3. Message Send/Edit Flow (Frontend)">3. メッセージ送信・編集フロー（フロントエンド）</h2>
+      <div class="diagram">
+        <pre class="mermaid" data-lang="ja">
+flowchart TD
+  S(["送信ボタン / Enter"]) --> ED{"編集モード中か？<br/>state.editingId"}
+  ED -- はい --> EMPTY{"本文が空？"}
+  EMPTY -- はい --> CANCEL["編集をキャンセル"]
+  EMPTY -- いいえ --> SAME{"内容が<br/>未変更？"}
+  SAME -- はい --> CANCEL
+  SAME -- いいえ --> PATCH["PATCH /api/messages/{id}"]
+  PATCH --> CLR["入力欄クリア・編集解除"]
+
+  ED -- いいえ --> VAL{"本文または<br/>添付あり？"}
+  VAL -- いいえ --> NOOP(["何もしない"])
+  VAL -- はい --> POST["POST メッセージ作成"]
+  POST --> RESET["入力欄・添付プレビュー初期化"]
+        </pre>
+        <pre class="mermaid" data-lang="en">
+flowchart TD
+  S(["Send button / Enter"]) --> ED{"Edit mode?<br/>state.editingId"}
+  ED -- Yes --> EMPTY{"Body empty?"}
+  EMPTY -- Yes --> CANCEL["cancel edit"]
+  EMPTY -- No --> SAME{"Content<br/>unchanged?"}
+  SAME -- Yes --> CANCEL
+  SAME -- No --> PATCH["PATCH /api/messages/{id}"]
+  PATCH --> CLR["clear input, exit edit"]
+
+  ED -- No --> VAL{"Body or<br/>attachment?"}
+  VAL -- No --> NOOP(["do nothing"])
+  VAL -- Yes --> POST["POST create message"]
+  POST --> RESET["reset input &amp; attachment preview"]
+        </pre>
+        <div class="caption" data-ja="図14. フロント側の送信／編集フロー。編集は専用ダイアログではなく下部の入力欄を用いたインライン編集方式。" data-en="Fig. 14 Frontend send/edit flow. Editing is inline via the bottom input, not a separate dialog.">図14. フロント側の送信／編集フロー。編集は専用ダイアログではなく下部の入力欄を用いたインライン編集方式。</div>
+      </div>
+
+      <h2 data-ja="4. 図表（ダイアグラム）レンダリングのフォールバック" data-en="4. Diagram Rendering Fallback">4. 図表（ダイアグラム）レンダリングのフォールバック</h2>
+      <div class="diagram">
+        <pre class="mermaid" data-lang="ja">
+flowchart TD
+  S(["コードブロック検出<br/>言語: mermaid / plantuml"]) --> TYPE{"種類は？"}
+  TYPE -- mermaid --> ML{"mermaid 同梱<br/>ライブラリあり？"}
+  ML -- はい --> MR["クライアントでSVG描画"]
+  ML -- いいえ --> SRC["ソースコード表示に<br/>フォールバック"]
+
+  TYPE -- plantuml --> PA{"サーバーで<br/>plantuml.jar + JRE<br/>利用可能？"}
+  PA -- はい --> PR["POST /api/render/plantuml<br/>サーバーでSVG生成（SANDBOX）"]
+  PR --> PCHECK{"描画成功？"}
+  PCHECK -- はい --> POUT["SVG表示（キャッシュ）"]
+  PCHECK -- いいえ --> SRC
+  PA -- いいえ --> SRC
+        </pre>
+        <pre class="mermaid" data-lang="en">
+flowchart TD
+  S(["Code block detected<br/>lang: mermaid / plantuml"]) --> TYPE{"Which type?"}
+  TYPE -- mermaid --> ML{"Bundled mermaid<br/>library present?"}
+  ML -- Yes --> MR["render SVG on client"]
+  ML -- No --> SRC["fallback to<br/>source display"]
+
+  TYPE -- plantuml --> PA{"plantuml.jar + JRE<br/>available on server?"}
+  PA -- Yes --> PR["POST /api/render/plantuml<br/>server SVG (SANDBOX)"]
+  PR --> PCHECK{"render ok?"}
+  PCHECK -- Yes --> POUT["show SVG (cached)"]
+  PCHECK -- No --> SRC
+  PA -- No --> SRC
+        </pre>
+        <div class="caption" data-ja="図15. 図表描画。利用不可・失敗時はソース表示にフォールバックし、機能を停止させない。PlantUMLはSANDBOXプロファイルで実行。" data-en="Fig. 15 Diagram rendering. On unavailability/failure it falls back to source display instead of failing. PlantUML runs under the SANDBOX profile.">図15. 図表描画。利用不可・失敗時はソース表示にフォールバックし、機能を停止させない。PlantUMLはSANDBOXプロファイルで実行。</div>
+      </div>
+
+      <h2 data-ja="5. 未読件数の算出フロー" data-en="5. Unread Count Flow">5. 未読件数の算出フロー</h2>
+      <div class="diagram">
+        <pre class="mermaid" data-lang="ja">
+flowchart TD
+  S(["GET /api/unread"]) --> RS["ReadState を取得<br/>（チャンネル/DMごとの最終既読ID）"]
+  RS --> CH["所属サーバーの全チャンネルを走査"]
+  CH --> CNT["last_read より新しく<br/>自分以外が投稿し<br/>未削除のメッセージ数を集計"]
+  CNT --> DM["参加中の全DMを走査して同様に集計"]
+  DM --> OUT(["{channels:{...}, dms:{...}} を返却"])
+        </pre>
+        <pre class="mermaid" data-lang="en">
+flowchart TD
+  S(["GET /api/unread"]) --> RS["load ReadState<br/>(last read id per channel/DM)"]
+  RS --> CH["scan all channels of joined servers"]
+  CH --> CNT["count messages newer than last_read,<br/>authored by others,<br/>and not deleted"]
+  CNT --> DM["scan all joined DMs and count likewise"]
+  DM --> OUT(["return {channels:{...}, dms:{...}}"])
+        </pre>
+        <div class="caption" data-ja="図16. 未読バッジ算出。自分の投稿・削除済みは未読に含めない。" data-en="Fig. 16 Unread badge calculation. Own posts and deleted messages are excluded.">図16. 未読バッジ算出。自分の投稿・削除済みは未読に含めない。</div>
+      </div>
+
+      <footer data-ja="LocalChat 基本設計書 — フローチャート図" data-en="LocalChat Basic Design Document — Flowcharts">LocalChat 基本設計書 — フローチャート図</footer>
+    </main>
+  </div>
+
+  <script src="../frontend/static/vendor/mermaid.min.js"></script>
+  <script src="assets/i18n.js"></script>
+</body>
+</html>

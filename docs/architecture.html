@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LocalChat 基本設計書 | アーキテクチャ図</title>
+  <link rel="stylesheet" href="assets/design.css" />
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">Local<span>Chat</span></div>
+      <div class="sub" data-ja="基本設計書 v0.1.0" data-en="Basic Design Document v0.1.0">基本設計書 v0.1.0</div>
+      <nav>
+        <a href="index.html" data-ja="概要・全体像" data-en="Overview">概要・全体像</a>
+        <a href="architecture.html" class="active" data-ja="アーキテクチャ図" data-en="Architecture">アーキテクチャ図</a>
+        <a href="class-diagram.html" data-ja="クラス図・ER図" data-en="Class &amp; ER Diagram">クラス図・ER図</a>
+        <a href="sequence.html" data-ja="シーケンス図" data-en="Sequence Diagrams">シーケンス図</a>
+        <a href="flowchart.html" data-ja="フローチャート図" data-en="Flowcharts">フローチャート図</a>
+        <div class="nav-section" data-ja="ツール" data-en="Tools">ツール</div>
+        <a href="diagram-lab.html" data-ja="図エラー検証ラボ" data-en="Diagram Lab">図エラー検証ラボ</a>
+        <div class="nav-section" data-ja="関連資料" data-en="References">関連資料</div>
+        <a href="要件定義書.html" data-ja="要件定義書" data-en="Requirements (JA)">要件定義書</a>
+      </nav>
+    </aside>
+
+    <main class="content">
+      <h1 data-ja="アーキテクチャ図" data-en="Architecture">アーキテクチャ図</h1>
+      <p class="lead" data-ja="レイヤ構成・コンポーネント分割・デプロイ構成を示します。" data-en="Shows the layered structure, component breakdown, and deployment.">レイヤ構成・コンポーネント分割・デプロイ構成を示します。</p>
+
+      <h2 data-ja="1. レイヤ構成（論理アーキテクチャ）" data-en="1. Layered (Logical) Architecture">1. レイヤ構成（論理アーキテクチャ）</h2>
+      <div class="diagram">
+        <pre class="mermaid" data-lang="ja">
+flowchart TB
+  subgraph P["プレゼンテーション層（ブラウザ SPA）"]
+    A1["app.js（画面制御・状態管理・WSクライアント）"]
+    A2["markdown.js（Markdown→HTML 変換）"]
+    A3["style.css / index.html"]
+  end
+
+  subgraph E["エッジ層（ASGIミドルウェア）"]
+    M1["PrivateNetworkGuard<br/>（プライベートNW限定）"]
+    M2["TLS 終端（自己署名証明書）"]
+  end
+
+  subgraph C["アプリケーション層（FastAPI ルーター）"]
+    R1["auth / users"]
+    R2["servers / invites"]
+    R3["messages / dms"]
+    R4["files / render"]
+    R5["ws（WebSocket・既読）"]
+  end
+
+  subgraph S["ドメイン・サービス層"]
+    SV1["services.py<br/>（権限判定・整形・通知対象解決）"]
+    SV2["security.py<br/>（ハッシュ・トークン）"]
+    SV3["ws_manager.py<br/>（ConnectionManager）"]
+  end
+
+  subgraph D["データアクセス層"]
+    O1["models.py（ORMエンティティ）"]
+    O2["database.py（Session/Engine）"]
+  end
+
+  subgraph I["インフラ層"]
+    DB[("SQLite")]
+    FS[("ローカルファイル<br/>uploads")]
+    PU["PlantUML jar + JRE"]
+  end
+
+  P --> E --> C --> S --> D --> I
+  R4 --> PU
+        </pre>
+        <pre class="mermaid" data-lang="en">
+flowchart TB
+  subgraph P["Presentation layer (browser SPA)"]
+    A1["app.js (UI control, state, WS client)"]
+    A2["markdown.js (Markdown to HTML)"]
+    A3["style.css / index.html"]
+  end
+
+  subgraph E["Edge layer (ASGI middleware)"]
+    M1["PrivateNetworkGuard<br/>(private network only)"]
+    M2["TLS termination (self-signed cert)"]
+  end
+
+  subgraph C["Application layer (FastAPI routers)"]
+    R1["auth / users"]
+    R2["servers / invites"]
+    R3["messages / dms"]
+    R4["files / render"]
+    R5["ws (WebSocket, read state)"]
+  end
+
+  subgraph S["Domain / service layer"]
+    SV1["services.py<br/>(authorization, serialization, targets)"]
+    SV2["security.py<br/>(hashing, tokens)"]
+    SV3["ws_manager.py<br/>(ConnectionManager)"]
+  end
+
+  subgraph D["Data access layer"]
+    O1["models.py (ORM entities)"]
+    O2["database.py (Session/Engine)"]
+  end
+
+  subgraph I["Infrastructure layer"]
+    DB[("SQLite")]
+    FS[("Local files<br/>uploads")]
+    PU["PlantUML jar + JRE"]
+  end
+
+  P --> E --> C --> S --> D --> I
+  R4 --> PU
+        </pre>
+        <div class="caption" data-ja="図2. 論理レイヤ構成。上位層は下位層にのみ依存する一方向の依存関係。" data-en="Fig. 2 Logical layers. Each layer depends only on the layer below (one-directional).">図2. 論理レイヤ構成。上位層は下位層にのみ依存する一方向の依存関係。</div>
+      </div>
+
+      <h2 data-ja="2. コンポーネント構成（バックエンド）" data-en="2. Component Structure (Backend)">2. コンポーネント構成（バックエンド）</h2>
+      <div class="diagram">
+        <pre class="mermaid" data-lang="ja">
+flowchart LR
+  main["main.py<br/>（アプリ起動・ルーター登録）"]
+
+  subgraph routers["routers/"]
+    auth["auth.py"]
+    users["users.py"]
+    servers["servers.py"]
+    invites["invites.py"]
+    messages["messages.py"]
+    dms["dms.py"]
+    files["files.py"]
+    render["render.py"]
+    ws["ws.py"]
+  end
+
+  deps["deps.py<br/>get_current_user"]
+  services["services.py"]
+  security["security.py"]
+  wsm["ws_manager.py<br/>manager"]
+  models["models.py"]
+  database["database.py"]
+  config["config.py / settings"]
+  guard["network_guard.py"]
+  tls["tls.py"]
+
+  main --> routers
+  main --> guard
+  main --> tls
+  main --> config
+  routers --> deps
+  routers --> services
+  routers --> models
+  messages --> wsm
+  dms --> wsm
+  ws --> wsm
+  auth --> security
+  deps --> security
+  services --> models
+  models --> database
+  database --> config
+        </pre>
+        <pre class="mermaid" data-lang="en">
+flowchart LR
+  main["main.py<br/>(startup, router registration)"]
+
+  subgraph routers["routers/"]
+    auth["auth.py"]
+    users["users.py"]
+    servers["servers.py"]
+    invites["invites.py"]
+    messages["messages.py"]
+    dms["dms.py"]
+    files["files.py"]
+    render["render.py"]
+    ws["ws.py"]
+  end
+
+  deps["deps.py<br/>get_current_user"]
+  services["services.py"]
+  security["security.py"]
+  wsm["ws_manager.py<br/>manager"]
+  models["models.py"]
+  database["database.py"]
+  config["config.py / settings"]
+  guard["network_guard.py"]
+  tls["tls.py"]
+
+  main --> routers
+  main --> guard
+  main --> tls
+  main --> config
+  routers --> deps
+  routers --> services
+  routers --> models
+  messages --> wsm
+  dms --> wsm
+  ws --> wsm
+  auth --> security
+  deps --> security
+  services --> models
+  models --> database
+  database --> config
+        </pre>
+        <div class="caption" data-ja="図3. バックエンドのモジュール依存関係。リアルタイム配信が必要なルーターのみ ws_manager に依存する。" data-en="Fig. 3 Backend module dependencies. Only routers needing realtime delivery depend on ws_manager.">図3. バックエンドのモジュール依存関係。リアルタイム配信が必要なルーターのみ ws_manager に依存する。</div>
+      </div>
+
+      <h2 data-ja="3. デプロイ構成" data-en="3. Deployment">3. デプロイ構成</h2>
+      <div class="diagram">
+        <pre class="mermaid" data-lang="ja">
+flowchart TB
+  subgraph host["社内サーバーホスト（オンプレミス / Windows）"]
+    subgraph proc["uvicorn プロセス"]
+      app["backend.main:app（FastAPI）"]
+    end
+    subgraph rt["同梱ランタイム"]
+      jre["runtime/jdk-17 JRE"]
+      jar["plantuml/plantuml-*.jar"]
+    end
+    subgraph data["data/"]
+      sqlite[("localchat.db")]
+      uploads[("uploads/")]
+    end
+    certs["certs/server.crt + server.key<br/>（自己署名・自動生成）"]
+    frontend["frontend/（静的配信）"]
+  end
+
+  pc1["社員PC（ブラウザ）"]
+  pc2["社員PC（ブラウザ）"]
+
+  pc1 -- "HTTPS/WSS<br/>社内LAN" --> app
+  pc2 -- "HTTPS/WSS<br/>社内LAN" --> app
+  app --> sqlite
+  app --> uploads
+  app --> certs
+  app --> frontend
+  app --> jre
+  jre --> jar
+        </pre>
+        <pre class="mermaid" data-lang="en">
+flowchart TB
+  subgraph host["On-prem server host (Windows)"]
+    subgraph proc["uvicorn process"]
+      app["backend.main:app (FastAPI)"]
+    end
+    subgraph rt["Bundled runtime"]
+      jre["runtime/jdk-17 JRE"]
+      jar["plantuml/plantuml-*.jar"]
+    end
+    subgraph data["data/"]
+      sqlite[("localchat.db")]
+      uploads[("uploads/")]
+    end
+    certs["certs/server.crt + server.key<br/>(self-signed, auto-generated)"]
+    frontend["frontend/ (static hosting)"]
+  end
+
+  pc1["Employee PC (browser)"]
+  pc2["Employee PC (browser)"]
+
+  pc1 -- "HTTPS/WSS<br/>LAN" --> app
+  pc2 -- "HTTPS/WSS<br/>LAN" --> app
+  app --> sqlite
+  app --> uploads
+  app --> certs
+  app --> frontend
+  app --> jre
+  jre --> jar
+        </pre>
+        <div class="caption" data-ja="図4. デプロイ構成。単一ホスト上で uvicorn が全機能を提供する。DB・ファイル・証明書・ランタイムをすべてローカルに保持する。" data-en="Fig. 4 Deployment. A single host runs uvicorn providing all features. DB, files, certificates, and runtime are all kept locally.">図4. デプロイ構成。単一ホスト上で uvicorn が全機能を提供する。DB・ファイル・証明書・ランタイムをすべてローカルに保持する。</div>
+      </div>
+
+      <h2 data-ja="4. 主な設計方針" data-en="4. Key Design Principles">4. 主な設計方針</h2>
+      <div class="card">
+        <table>
+          <thead><tr>
+            <th data-ja="方針" data-en="Principle">方針</th>
+            <th data-ja="内容" data-en="Description">内容</th>
+          </tr></thead>
+          <tbody>
+            <tr><td data-ja="完全オフライン" data-en="Fully offline">完全オフライン</td><td data-ja="外部CDN・クラウド・SaaSに一切接続しない。依存ライブラリ・ランタイム・図表エンジンをすべて同梱。" data-en="No connection to external CDNs, cloud, or SaaS. All libraries, runtime, and diagram engines are bundled.">外部CDN・クラウド・SaaSに一切接続しない。依存ライブラリ・ランタイム・図表エンジンをすべて同梱。</td></tr>
+            <tr><td data-ja="閉域網限定" data-en="Closed network only">閉域網限定</td><td data-ja="&lt;code&gt;PrivateNetworkGuard&lt;/code&gt; によりプライベートIP以外からのHTTP/WebSocketを拒否（多層防御）。" data-en="&lt;code&gt;PrivateNetworkGuard&lt;/code&gt; rejects HTTP/WebSocket from non-private IPs (defense in depth).">&lt;code&gt;PrivateNetworkGuard&lt;/code&gt; によりプライベートIP以外からのHTTP/WebSocketを拒否（多層防御）。</td></tr>
+            <tr><td data-ja="外部依存の最小化" data-en="Minimal dependencies">外部依存の最小化</td><td data-ja="パスワードハッシュ・トークン署名を標準ライブラリのみで実装（bcrypt/jose不使用）。" data-en="Password hashing and token signing implemented with the standard library only (no bcrypt/jose).">パスワードハッシュ・トークン署名を標準ライブラリのみで実装（bcrypt/jose不使用）。</td></tr>
+            <tr><td data-ja="単一プロセス" data-en="Single process">単一プロセス</td><td data-ja="メッセージブローカーを使わず、プロセス内 &lt;code&gt;ConnectionManager&lt;/code&gt; でWS接続を管理。" data-en="No message broker; WebSocket connections are managed in-process by &lt;code&gt;ConnectionManager&lt;/code&gt;.">メッセージブローカーを使わず、プロセス内 &lt;code&gt;ConnectionManager&lt;/code&gt; でWS接続を管理。</td></tr>
+            <tr><td data-ja="段階的フォールバック" data-en="Graceful fallback">段階的フォールバック</td><td data-ja="PlantUML未導入時はソース表示にフォールバックし、機能停止させない。" data-en="When PlantUML is unavailable, it falls back to showing source instead of failing.">PlantUML未導入時はソース表示にフォールバックし、機能停止させない。</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <footer data-ja="LocalChat 基本設計書 — アーキテクチャ図" data-en="LocalChat Basic Design Document — Architecture">LocalChat 基本設計書 — アーキテクチャ図</footer>
+    </main>
+  </div>
+
+  <script src="../frontend/static/vendor/mermaid.min.js"></script>
+  <script src="assets/i18n.js"></script>
+</body>
+</html>

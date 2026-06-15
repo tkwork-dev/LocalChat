@@ -1,0 +1,57 @@
+@startuml test
+title 登録ボタン押下時の営業日整合性チェックフロー\n（放送番号別金額修正 / 金種別手入力）
+skinparam defaultFontName "Meiryo"
+skinparam shadowing false
+skinparam ArrowColor #444444
+skinparam NoteBackgroundColor #FFF8DC
+start
+:ユーザーが画面で値を入力;
+note right
+画面上には開いた時点の営業日が表示されている
+end note
+:「登録」ボタンを押下;
+partition "営業日整合性チェック" {
+:サーバーから最新営業日を取得\n(get_eigyo_date);
+if (営業日を取得できたか？) then (取得失敗＝異常系)
+note right #FFE0E0
+<b>異常系</b>
+DB接続不可 / サーバー例外(500) / セッション切れ / 通信エラー など
+→ 正常な「締め処理による更新」とは区別する
+end note
+:サーバー側エラーログに出力\n(err_logger.log_exception);<<#FFB3B3>>
+note right
+※console.error で握りつぶさず、サーバー側ログに記録し原因を追跡可能にする
+end note
+:エラーメッセージ E0000005 を表示;<<#FFD6D6>>
+note right
+※画面の再読込は行わない
+※ユーザーの入力内容は保持される
+end note
+stop
+else (取得成功)
+endif
+if (画面の営業日 == DBの営業日 ？) then (不一致＝正常系)
+note right #E0F0FF
+<b>正常系</b>
+他ユーザーが締め処理を行い、営業日が更新された想定内のケース
+→ エラーログは不要
+end note
+:画面上の営業日表示「のみ」を\n最新の営業日に更新;
+note right
+入力欄（値）は更新しない
+→ 入力内容は消えない
+end note
+:エラーメッセージ E0000005 を表示\n「営業日が更新されております。\n再度、操作を実行してください。」;<<#FFD6D6>>
+:処理を中断（登録しない）;
+stop
+else (一致)
+endif
+}
+:登録処理を実行\n(DBへ送信);<<#D6F5D6>>
+if (登録に成功したか？) then (成功)
+:完了メッセージを表示;
+else (失敗)
+:エラーメッセージを表示;
+endif
+stop
+@enduml

@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# 環境設定・機密情報
+.env
+
+# データ（DB・アップロードファイル）
+data/
+
+# 同梱ランタイム（ポータブルJRE。各環境で配置するためコミットしない）
+runtime/
+
+# PlantUML 本体（サードパーティJAR。サイズが大きく各環境で配置するためコミットしない）
+plantuml/*.jar
+
+# TLS証明書・秘密鍵（機密。各環境で生成するためコミットしない）
+certs/
+
+# IDE
+.vscode/
+.idea/

@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LocalChat 基本設計書 | 図エラー検証ラボ</title>
+  <link rel="stylesheet" href="assets/design.css" />
+  <style>
+    .lab-tabs { display: flex; gap: 8px; margin: 8px 0 16px; }
+    .lab-tabs button {
+      padding: 8px 18px; border: 1px solid var(--border); background: var(--surface);
+      color: var(--text-muted); border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 14px;
+    }
+    .lab-tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .lab-editor { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+    @media (max-width: 1000px) { .lab-editor { grid-template-columns: 1fr; } }
+    .lab-editor textarea {
+      width: 100%; min-height: 360px; resize: vertical; font-family: "Cascadia Code", Consolas, monospace;
+      font-size: 13px; line-height: 1.6; padding: 14px; border: 1px solid var(--border-strong, #c3ccdb);
+      border-radius: 10px; background: #fbfcfe; color: var(--text); tab-size: 2;
+    }
+    .lab-editor textarea:focus { outline: none; border-color: var(--accent); }
+    .lab-out {
+      min-height: 360px; border: 1px solid var(--border); border-radius: 10px; background: #fff;
+      padding: 16px; overflow: auto;
+    }
+    .lab-out svg { max-width: 100%; height: auto; }
+    .lab-status { margin: 6px 0 0; font-size: 13px; font-weight: 700; }
+    .lab-status.ok { color: var(--green); }
+    .lab-status.err { color: var(--red); }
+    .lab-error {
+      margin-top: 10px; background: #fdecec; border: 1px solid #f3b6b6; color: #8f2222;
+      border-radius: 8px; padding: 12px 14px; font-size: 13px; white-space: pre-wrap;
+      font-family: "Cascadia Code", Consolas, monospace; display: none;
+    }
+    .lab-toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 0; align-items: center; }
+    .lab-toolbar .spacer { flex: 1; }
+    .lab-samples { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .lab-samples button {
+      padding: 5px 11px; font-size: 12px; border: 1px solid var(--border); background: var(--surface-2);
+      color: var(--text); border-radius: 999px; cursor: pointer;
+    }
+    .lab-samples button:hover { background: var(--accent-soft); color: var(--accent); }
+    .puml-config { display: flex; flex-wrap: wrap; gap: 10px; margin: 4px 0 14px; }
+    .puml-config label { font-size: 12px; color: var(--text-muted); display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 200px; }
+    .puml-config input {
+      padding: 8px 10px; border: 1px solid var(--border); border-radius: 7px; font-size: 13px; background: #fff; color: var(--text);
+    }
+    .pane { display: none; }
+    .pane.active { display: block; }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">Local<span>Chat</span></div>
+      <div class="sub" data-ja="基本設計書 v0.1.0" data-en="Basic Design Document v0.1.0">基本設計書 v0.1.0</div>
+      <nav>
+        <a href="index.html" data-ja="概要・全体像" data-en="Overview">概要・全体像</a>
+        <a href="architecture.html" data-ja="アーキテクチャ図" data-en="Architecture">アーキテクチャ図</a>
+        <a href="class-diagram.html" data-ja="クラス図・ER図" data-en="Class &amp; ER Diagram">クラス図・ER図</a>
+        <a href="sequence.html" data-ja="シーケンス図" data-en="Sequence Diagrams">シーケンス図</a>
+        <a href="flowchart.html" data-ja="フローチャート図" data-en="Flowcharts">フローチャート図</a>
+        <div class="nav-section" data-ja="ツール" data-en="Tools">ツール</div>
+        <a href="diagram-lab.html" class="active" data-ja="図エラー検証ラボ" data-en="Diagram Lab">図エラー検証ラボ</a>
+        <div class="nav-section" data-ja="関連資料" data-en="References">関連資料</div>
+        <a href="要件定義書.html" data-ja="要件定義書" data-en="Requirements (JA)">要件定義書</a>
+      </nav>
+    </aside>
+
+    <main class="content">
+      <h1 data-ja="図エラー検証ラボ" data-en="Diagram Lab">図エラー検証ラボ</h1>
+      <p class="lead"
+         data-ja="Mermaid / PlantUML のソースを貼り付けて、描画と構文エラーをその場で確認できます。Mermaid は完全にブラウザ内（オフライン）で検証します。"
+         data-en="Paste Mermaid / PlantUML source to render and check syntax errors on the spot. Mermaid is validated entirely in the browser (offline).">Mermaid / PlantUML のソースを貼り付けて、描画と構文エラーをその場で確認できます。</p>
+
+      <div class="lab-tabs">
+        <button type="button" id="tab-mermaid" class="active">Mermaid</button>
+        <button type="button" id="tab-puml">PlantUML</button>
+      </div>
+
+      <!-- ===== Mermaid ===== -->
+      <section id="pane-mermaid" class="pane active">
+        <div class="lab-toolbar">
+          <label style="font-size:13px;display:flex;align-items:center;gap:6px;">
+            <input type="checkbox" id="mmd-auto" checked />
+            <span data-ja="自動検証（入力時）" data-en="Auto-validate on input">自動検証（入力時）</span>
+          </label>
+          <button class="btn-primary" id="mmd-run" style="width:auto;padding:8px 18px;" data-ja="検証 / 描画" data-en="Validate / Render">検証 / 描画</button>
+          <button class="btn-secondary" id="mmd-clear" data-ja="クリア" data-en="Clear">クリア</button>
+        </div>
+        <div class="lab-samples">
+          <span style="font-size:12px;color:var(--text-muted);align-self:center;" data-ja="サンプル:" data-en="Samples:">サンプル:</span>
+          <button data-sample="class" data-ja="クラス図（設計書と同一）" data-en="Class diagram (same as docs)">クラス図</button>
+          <button data-sample="flow" data-ja="フローチャート" data-en="Flowchart">フローチャート</button>
+          <button data-sample="seq" data-ja="シーケンス" data-en="Sequence">シーケンス</button>
+          <button data-sample="er" data-ja="ER図" data-en="ER">ER図</button>
+        </div>
+        <div class="lab-editor" style="margin-top:14px;">
+          <div>
+            <textarea id="mmd-src" spellcheck="false" placeholder="classDiagram&#10;  class Foo {&#10;    +bar() void&#10;  }"></textarea>
+            <p class="lab-status" id="mmd-status"></p>
+            <div class="lab-error" id="mmd-err"></div>
+          </div>
+          <div class="lab-out" id="mmd-out"></div>
+        </div>
+      </section>
+
+      <!-- ===== PlantUML ===== -->
+      <section id="pane-puml" class="pane">
+        <div class="note"
+             data-ja="PlantUML はサーバー側（&lt;code&gt;/api/render/plantuml&lt;/code&gt;）で描画します。実行中のサーバーURLと認証トークンが必要です。&lt;br/&gt;ブラウザのCORS制約のため、&lt;strong&gt;サーバーと同一オリジンで開く&lt;/strong&gt;のが確実です（例: アプリから配信、または &lt;code&gt;http://localhost&lt;/code&gt; 経由）。"
+             data-en="PlantUML is rendered on the server (&lt;code&gt;/api/render/plantuml&lt;/code&gt;). A running server URL and auth token are required.&lt;br/&gt;Due to browser CORS, it is most reliable to &lt;strong&gt;open this page from the same origin as the server&lt;/strong&gt;.">PlantUML はサーバー側で描画します。</div>
+        <div class="puml-config">
+          <label>
+            <span data-ja="サーバーURL" data-en="Server URL">サーバーURL</span>
+            <input type="text" id="puml-base" placeholder="https://localhost:8000" />
+          </label>
+          <label>
+            <span data-ja="アクセストークン（ログイン後に取得）" data-en="Access token (from login)">アクセストークン</span>
+            <input type="password" id="puml-token" placeholder="Bearer token" />
+          </label>
+        </div>
+        <div class="lab-toolbar">
+          <button class="btn-primary" id="puml-run" style="width:auto;padding:8px 18px;" data-ja="サーバーで描画" data-en="Render on server">サーバーで描画</button>
+          <button class="btn-secondary" id="puml-clear" data-ja="クリア" data-en="Clear">クリア</button>
+        </div>
+        <div class="lab-samples">
+          <span style="font-size:12px;color:var(--text-muted);align-self:center;" data-ja="サンプル:" data-en="Samples:">サンプル:</span>
+          <button data-puml-sample="seq" data-ja="シーケンス" data-en="Sequence">シーケンス</button>
+          <button data-puml-sample="class" data-ja="クラス" data-en="Class">クラス</button>
+        </div>
+        <div class="lab-editor" style="margin-top:14px;">
+          <div>
+            <textarea id="puml-src" spellcheck="false" placeholder="@startuml&#10;Alice -> Bob: Hello&#10;@enduml"></textarea>
+            <p class="lab-status" id="puml-status"></p>
+            <div class="lab-error" id="puml-err"></div>
+          </div>
+          <div class="lab-out" id="puml-out"></div>
+        </div>
+      </section>
+
+      <footer data-ja="LocalChat 基本設計書 — 図エラー検証ラボ" data-en="LocalChat Basic Design Document — Diagram Lab">LocalChat 基本設計書 — 図エラー検証ラボ</footer>
+    </main>
+  </div>
+
+  <script src="../frontend/static/vendor/mermaid.min.js"></script>
+  <script src="assets/i18n.js"></script>
+  <script src="assets/diagram-lab.js"></script>
+</body>
+</html>

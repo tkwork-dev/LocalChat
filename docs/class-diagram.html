@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LocalChat 基本設計書 | クラス図・ER図</title>
+  <link rel="stylesheet" href="assets/design.css" />
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">Local<span>Chat</span></div>
+      <div class="sub" data-ja="基本設計書 v0.1.0" data-en="Basic Design Document v0.1.0">基本設計書 v0.1.0</div>
+      <nav>
+        <a href="index.html" data-ja="概要・全体像" data-en="Overview">概要・全体像</a>
+        <a href="architecture.html" data-ja="アーキテクチャ図" data-en="Architecture">アーキテクチャ図</a>
+        <a href="class-diagram.html" class="active" data-ja="クラス図・ER図" data-en="Class &amp; ER Diagram">クラス図・ER図</a>
+        <a href="sequence.html" data-ja="シーケンス図" data-en="Sequence Diagrams">シーケンス図</a>
+        <a href="flowchart.html" data-ja="フローチャート図" data-en="Flowcharts">フローチャート図</a>
+        <div class="nav-section" data-ja="ツール" data-en="Tools">ツール</div>
+        <a href="diagram-lab.html" data-ja="図エラー検証ラボ" data-en="Diagram Lab">図エラー検証ラボ</a>
+        <div class="nav-section" data-ja="関連資料" data-en="References">関連資料</div>
+        <a href="要件定義書.html" data-ja="要件定義書" data-en="Requirements (JA)">要件定義書</a>
+      </nav>
+    </aside>
+
+    <main class="content">
+      <h1 data-ja="クラス図・ER図" data-en="Class &amp; ER Diagram">クラス図・ER図</h1>
+      <p class="lead" data-ja="データモデル（ORMエンティティ）の関連と、バックエンドの主要クラス構成を示します。" data-en="Shows relationships among data-model (ORM) entities and the main backend classes.">データモデル（ORMエンティティ）の関連と、バックエンドの主要クラス構成を示します。</p>
+
+      <h2 data-ja="1. データモデル（ER図）" data-en="1. Data Model (ER Diagram)">1. データモデル（ER図）</h2>
+      <div class="diagram">
+        <pre class="mermaid" data-lang="ja">
+erDiagram
+  USER ||--o{ SERVER : "owns(owner_id)"
+  USER ||--o{ SERVER_MEMBER : "belongs"
+  SERVER ||--o{ SERVER_MEMBER : "has"
+  SERVER ||--o{ CHANNEL : "has"
+  SERVER ||--o{ SERVER_INVITE : "issues"
+  USER ||--o{ SERVER_INVITE : "creates"
+  CHANNEL ||--o{ MESSAGE : "contains"
+  DM_CHANNEL ||--o{ DM_MEMBER : "has"
+  USER ||--o{ DM_MEMBER : "joins"
+  DM_CHANNEL ||--o{ MESSAGE : "contains"
+  USER ||--o{ MESSAGE : "authors"
+  MESSAGE ||--o{ MESSAGE : "thread(parent_id)"
+  MESSAGE ||--o{ REACTION : "has"
+  USER ||--o{ REACTION : "reacts"
+  MESSAGE ||--o{ ATTACHMENT : "has"
+  USER ||--o{ ATTACHMENT : "uploads"
+  USER ||--o{ READ_STATE : "tracks"
+
+  USER {
+    int id PK
+    string username UK
+    string display_name
+    string password_hash
+    string avatar_url
+    string status_message
+    bool is_active
+    datetime created_at
+  }
+  SERVER {
+    int id PK
+    string name
+    string icon_url
+    int owner_id FK
+    datetime created_at
+  }
+  SERVER_MEMBER {
+    int id PK
+    int server_id FK
+    int user_id FK
+    string role "admin/moderator/member"
+    datetime joined_at
+  }
+  SERVER_INVITE {
+    int id PK
+    int server_id FK
+    string code UK
+    int created_by FK
+    int max_uses
+    int uses
+    datetime expires_at
+    bool is_revoked
+  }
+  CHANNEL {
+    int id PK
+    int server_id FK
+    string name
+    string topic
+    string type "text"
+    int position
+  }
+  DM_CHANNEL {
+    int id PK
+    bool is_group
+    string name
+    datetime created_at
+  }
+  DM_MEMBER {
+    int id PK
+    int dm_channel_id FK
+    int user_id FK
+  }
+  MESSAGE {
+    int id PK
+    int channel_id FK
+    int dm_channel_id FK
+    int author_id FK
+    string content
+    int parent_id FK
+    datetime edited_at
+    bool is_deleted
+    datetime created_at
+  }
+  REACTION {
+    int id PK
+    int message_id FK
+    int user_id FK
+    string emoji
+  }
+  ATTACHMENT {
+    int id PK
+    int message_id FK
+    int uploader_id FK
+    string filename
+    string stored_name
+    string content_type
+    int size
+  }
+  READ_STATE {
+    int id PK
+    int user_id FK
+    int channel_id FK
+    int dm_channel_id FK
+    int last_read_message_id
+  }
+        </pre>
+        <pre class="mermaid" data-lang="en">
+erDiagram
+  USER ||--o{ SERVER : "owns(owner_id)"
+  USER ||--o{ SERVER_MEMBER : "belongs"
+  SERVER ||--o{ SERVER_MEMBER : "has"
+  SERVER ||--o{ CHANNEL : "has"
+  SERVER ||--o{ SERVER_INVITE : "issues"
+  USER ||--o{ SERVER_INVITE : "creates"
+  CHANNEL ||--o{ MESSAGE : "contains"
+  DM_CHANNEL ||--o{ DM_MEMBER : "has"
+  USER ||--o{ DM_MEMBER : "joins"
+  DM_CHANNEL ||--o{ MESSAGE : "contains"
+  USER ||--o{ MESSAGE : "authors"
+  MESSAGE ||--o{ MESSAGE : "thread(parent_id)"
+  MESSAGE ||--o{ REACTION : "has"
+  USER ||--o{ REACTION : "reacts"
+  MESSAGE ||--o{ ATTACHMENT : "has"
+  USER ||--o{ ATTACHMENT : "uploads"
+  USER ||--o{ READ_STATE : "tracks"
+
+  USER {
+    int id PK
+    string username UK
+    string display_name
+    string password_hash
+    string avatar_url
+    string status_message
+    bool is_active
+    datetime created_at
+  }
+  SERVER {
+    int id PK
+    string name
+    string icon_url
+    int owner_id FK
+    datetime created_at
+  }
+  SERVER_MEMBER {
+    int id PK
+    int server_id FK
+    int user_id FK
+    string role "admin/moderator/member"
+    datetime joined_at
+  }
+  SERVER_INVITE {
+    int id PK
+    int server_id FK
+    string code UK
+    int created_by FK
+    int max_uses
+    int uses
+    datetime expires_at
+    bool is_revoked
+  }
+  CHANNEL {
+    int id PK
+    int server_id FK
+    string name
+    string topic
+    string type "text"
+    int position
+  }
+  DM_CHANNEL {
+    int id PK
+    bool is_group
+    string name
+    datetime created_at
+  }
+  DM_MEMBER {
+    int id PK
+    int dm_channel_id FK
+    int user_id FK
+  }
+  MESSAGE {
+    int id PK
+    int channel_id FK
+    int dm_channel_id FK
+    int author_id FK
+    string content
+    int parent_id FK
+    datetime edited_at
+    bool is_deleted
+    datetime created_at
+  }
+  REACTION {
+    int id PK
+    int message_id FK
+    int user_id FK
+    string emoji
+  }
+  ATTACHMENT {
+    int id PK
+    int message_id FK
+    int uploader_id FK
+    string filename
+    string stored_name
+    string content_type
+    int size
+  }
+  READ_STATE {
+    int id PK
+    int user_id FK
+    int channel_id FK
+    int dm_channel_id FK
+    int last_read_message_id
+  }
+        </pre>
+        <div class="caption"
+             data-ja="図5. ER図。&lt;code&gt;MESSAGE&lt;/code&gt; は &lt;code&gt;channel_id&lt;/code&gt;（サーバー内）または &lt;code&gt;dm_channel_id&lt;/code&gt;（DM）のいずれかに属する。スレッドは &lt;code&gt;parent_id&lt;/code&gt; による自己参照で表現する。"
+             data-en="Fig. 5 ER diagram. A &lt;code&gt;MESSAGE&lt;/code&gt; belongs to either &lt;code&gt;channel_id&lt;/code&gt; (server) or &lt;code&gt;dm_channel_id&lt;/code&gt; (DM). Threads are modeled by the self-reference &lt;code&gt;parent_id&lt;/code&gt;.">図5. ER図。<code>MESSAGE</code> は <code>channel_id</code>（サーバー内）または <code>dm_channel_id</code>（DM）のいずれかに属する。スレッドは <code>parent_id</code> による自己参照で表現する。</div>
+      </div>
+
+      <div class="note"
+           data-ja="&lt;strong&gt;主な制約：&lt;/strong&gt; &lt;code&gt;SERVER_MEMBER(server_id, user_id)&lt;/code&gt;、&lt;code&gt;DM_MEMBER(dm_channel_id, user_id)&lt;/code&gt;、&lt;code&gt;REACTION(message_id, user_id, emoji)&lt;/code&gt;、&lt;code&gt;READ_STATE(user_id, channel_id, dm_channel_id)&lt;/code&gt; はそれぞれ一意制約を持つ。"
+           data-en="&lt;strong&gt;Key constraints:&lt;/strong&gt; &lt;code&gt;SERVER_MEMBER(server_id, user_id)&lt;/code&gt;, &lt;code&gt;DM_MEMBER(dm_channel_id, user_id)&lt;/code&gt;, &lt;code&gt;REACTION(message_id, user_id, emoji)&lt;/code&gt;, and &lt;code&gt;READ_STATE(user_id, channel_id, dm_channel_id)&lt;/code&gt; each have a unique constraint.">
+        <strong>主な制約：</strong>
+        <code>SERVER_MEMBER(server_id, user_id)</code>、<code>DM_MEMBER(dm_channel_id, user_id)</code>、
+        <code>REACTION(message_id, user_id, emoji)</code>、<code>READ_STATE(user_id, channel_id, dm_channel_id)</code> はそれぞれ一意制約を持つ。
+      </div>
+
+      <h2 data-ja="2. ドメインクラス図（バックエンド主要クラス）" data-en="2. Domain Class Diagram (Main Backend Classes)">2. ドメインクラス図（バックエンド主要クラス）</h2>
+      <div class="diagram">
+        <pre class="mermaid" data-lang="ja">
+classDiagram
+  class Settings {
+    +str HOST
+    +int PORT
+    +str SECRET_KEY
+    +str DATABASE_URL
+    +str UPLOAD_DIR
+    +bool RESTRICT_TO_PRIVATE
+    +str PLANTUML_JAR
+    +ensure_dirs()
+  }
+
+  class ConnectionManager {
+    -dict connections
+    -Lock lock
+    +connect(user_id, ws)
+    +disconnect(user_id, ws)
+    +send_to_users(user_ids, message)
+    +online_user_ids() list
+  }
+
+  class PrivateNetworkGuard {
+    -list networks
+    -bool trust_forwarded
+    +call(scope, receive, send)
+    -client_ip(scope) str
+    -reject(scope, send)
+  }
+
+  class SecurityService {
+    &lt;&lt;module&gt;&gt;
+    +hash_password(pw) str
+    +verify_password(pw, stored) bool
+    +create_access_token(user_id) str
+    +decode_access_token(token) int
+  }
+
+  class DomainService {
+    &lt;&lt;module&gt;&gt;
+    +get_membership(db, server_id, user_id)
+    +require_membership(db, server_id, user_id)
+    +require_role(db, server_id, user_id, roles)
+    +channel_member_ids(db, channel) list
+    +dm_member_ids(db, dm_channel_id) list
+    +serialize_message(db, msg) MessagePublic
+  }
+
+  class ServerMember {
+    +str role
+  }
+
+  ConnectionManager ..> SecurityService : トークン検証
+  DomainService ..> ServerMember : 権限判定
+  PrivateNetworkGuard ..> Settings : 許可CIDR参照
+  SecurityService ..> Settings : SECRET_KEY参照
+        </pre>
+        <pre class="mermaid" data-lang="en">
+classDiagram
+  class Settings {
+    +str HOST
+    +int PORT
+    +str SECRET_KEY
+    +str DATABASE_URL
+    +str UPLOAD_DIR
+    +bool RESTRICT_TO_PRIVATE
+    +str PLANTUML_JAR
+    +ensure_dirs()
+  }
+
+  class ConnectionManager {
+    -dict connections
+    -Lock lock
+    +connect(user_id, ws)
+    +disconnect(user_id, ws)
+    +send_to_users(user_ids, message)
+    +online_user_ids() list
+  }
+
+  class PrivateNetworkGuard {
+    -list networks
+    -bool trust_forwarded
+    +call(scope, receive, send)
+    -client_ip(scope) str
+    -reject(scope, send)
+  }
+
+  class SecurityService {
+    &lt;&lt;module&gt;&gt;
+    +hash_password(pw) str
+    +verify_password(pw, stored) bool
+    +create_access_token(user_id) str
+    +decode_access_token(token) int
+  }
+
+  class DomainService {
+    &lt;&lt;module&gt;&gt;
+    +get_membership(db, server_id, user_id)
+    +require_membership(db, server_id, user_id)
+    +require_role(db, server_id, user_id, roles)
+    +channel_member_ids(db, channel) list
+    +dm_member_ids(db, dm_channel_id) list
+    +serialize_message(db, msg) MessagePublic
+  }
+
+  class ServerMember {
+    +str role
+  }
+
+  ConnectionManager ..> SecurityService : verify token
+  DomainService ..> ServerMember : check role
+  PrivateNetworkGuard ..> Settings : allowed CIDRs
+  SecurityService ..> Settings : SECRET_KEY
+        </pre>
+        <div class="caption"
+             data-ja="図6. バックエンドの主要クラス・モジュール。認証・権限・接続管理・アクセス制御の責務分割を示す。&lt;br/&gt;（図中の &lt;code&gt;call&lt;/code&gt; はASGIの &lt;code&gt;__call__&lt;/code&gt;、&lt;code&gt;connections&lt;/code&gt;/&lt;code&gt;lock&lt;/code&gt; 等は内部属性に対応）"
+             data-en="Fig. 6 Main backend classes/modules, showing responsibility split across auth, authorization, connection management, and access control.&lt;br/&gt;(&lt;code&gt;call&lt;/code&gt; maps to ASGI &lt;code&gt;__call__&lt;/code&gt;; &lt;code&gt;connections&lt;/code&gt;/&lt;code&gt;lock&lt;/code&gt; are internal attributes)">図6. バックエンドの主要クラス・モジュール。認証・権限・接続管理・アクセス制御の責務分割を示す。<br/>（図中の <code>call</code> はASGIの <code>__call__</code>、<code>connections</code>/<code>lock</code> 等は内部属性に対応）</div>
+      </div>
+
+      <h2 data-ja="3. ロール（権限）モデル" data-en="3. Role (Authorization) Model">3. ロール（権限）モデル</h2>
+      <div class="card">
+        <table>
+          <thead><tr>
+            <th data-ja="ロール" data-en="Role">ロール</th>
+            <th data-ja="権限範囲" data-en="Permissions">権限範囲</th>
+          </tr></thead>
+          <tbody>
+            <tr><td><code>admin</code></td><td data-ja="チャンネル作成・招待発行・ロール変更・メンバーのキック・メッセージ削除（全員分）" data-en="Create channels, issue invites, change roles, kick members, delete any message">チャンネル作成・招待発行・ロール変更・メンバーのキック・メッセージ削除（全員分）</td></tr>
+            <tr><td><code>moderator</code></td><td data-ja="チャンネル作成・招待発行・メッセージ削除（全員分）" data-en="Create channels, issue invites, delete any message">チャンネル作成・招待発行・メッセージ削除（全員分）</td></tr>
+            <tr><td><code>member</code></td><td data-ja="メッセージ送信・自分のメッセージの編集/削除・リアクション" data-en="Send messages, edit/delete own messages, react">メッセージ送信・自分のメッセージの編集/削除・リアクション</td></tr>
+          </tbody>
+        </table>
+        <p class="lead" style="margin-top:10px;"
+           data-ja="サーバー作成者は自動的に &lt;code&gt;admin&lt;/code&gt; となり、オーナー（&lt;code&gt;owner_id&lt;/code&gt;）はキック・降格の対象外。"
+           data-en="The server creator automatically becomes &lt;code&gt;admin&lt;/code&gt;; the owner (&lt;code&gt;owner_id&lt;/code&gt;) cannot be kicked or demoted.">サーバー作成者は自動的に <code>admin</code> となり、オーナー（<code>owner_id</code>）はキック・降格の対象外。</p>
+      </div>
+
+      <footer data-ja="LocalChat 基本設計書 — クラス図・ER図" data-en="LocalChat Basic Design Document — Class &amp; ER Diagram">LocalChat 基本設計書 — クラス図・ER図</footer>
+    </main>
+  </div>
+
+  <script src="../frontend/static/vendor/mermaid.min.js"></script>
+  <script src="assets/i18n.js"></script>
+</body>
+</html>

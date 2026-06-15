@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LocalChat 基本設計書 | トップ</title>
+  <link rel="stylesheet" href="assets/design.css" />
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">Local<span>Chat</span></div>
+      <div class="sub" data-ja="基本設計書 v0.1.0" data-en="Basic Design Document v0.1.0">基本設計書 v0.1.0</div>
+      <nav>
+        <a href="index.html" class="active" data-ja="概要・全体像" data-en="Overview">概要・全体像</a>
+        <a href="architecture.html" data-ja="アーキテクチャ図" data-en="Architecture">アーキテクチャ図</a>
+        <a href="class-diagram.html" data-ja="クラス図・ER図" data-en="Class &amp; ER Diagram">クラス図・ER図</a>
+        <a href="sequence.html" data-ja="シーケンス図" data-en="Sequence Diagrams">シーケンス図</a>
+        <a href="flowchart.html" data-ja="フローチャート図" data-en="Flowcharts">フローチャート図</a>
+        <div class="nav-section" data-ja="ツール" data-en="Tools">ツール</div>
+        <a href="diagram-lab.html" data-ja="図エラー検証ラボ" data-en="Diagram Lab">図エラー検証ラボ</a>
+        <div class="nav-section" data-ja="関連資料" data-en="References">関連資料</div>
+        <a href="要件定義書.html" data-ja="要件定義書" data-en="Requirements (JA)">要件定義書</a>
+      </nav>
+    </aside>
+
+    <main class="content">
+      <h1 data-ja="LocalChat 基本設計書" data-en="LocalChat Basic Design Document">LocalChat 基本設計書</h1>
+      <p class="lead"
+         data-ja="完全オフライン環境で動作する社内向けチャットアプリケーションの基本設計図集です。"
+         data-en="A set of basic design diagrams for an on-premises, fully offline internal chat application.">完全オフライン環境で動作する社内向けチャットアプリケーションの基本設計図集です。</p>
+
+      <div class="note"
+           data-ja="本設計書の図はすべて &lt;strong&gt;Mermaid&lt;/strong&gt; で記述され、アプリ本体に同梱された &lt;code&gt;frontend/static/vendor/mermaid.min.js&lt;/code&gt; を用いてオフライン描画されます。外部CDN・インターネット接続は不要です。"
+           data-en="All diagrams are written in &lt;strong&gt;Mermaid&lt;/strong&gt; and rendered offline using &lt;code&gt;frontend/static/vendor/mermaid.min.js&lt;/code&gt; bundled with the app. No external CDN or internet connection is required.">
+        本設計書の図はすべて <strong>Mermaid</strong> で記述され、アプリ本体に同梱された
+        <code>frontend/static/vendor/mermaid.min.js</code> を用いてオフライン描画されます。外部CDN・インターネット接続は不要です。
+      </div>
+
+      <h2 data-ja="1. システム概要" data-en="1. System Overview">1. システム概要</h2>
+      <div class="card">
+        <p data-ja="LocalChat は、外部サービスに一切依存せず社内イントラネット（閉域網）内だけで完結するチャットアプリです。サーバー（ワークスペース）／チャンネル／DM／スレッド／リアクション／ファイル添付／メンション／図表描画（Mermaid・PlantUML）に対応します。"
+           data-en="LocalChat is a chat application that runs entirely within the corporate intranet (closed network) with no dependency on external services. It supports servers (workspaces), channels, DMs, threads, reactions, file attachments, mentions, and diagram rendering (Mermaid and PlantUML).">LocalChat は、外部サービスに一切依存せず社内イントラネット（閉域網）内だけで完結するチャットアプリです。
+        サーバー（ワークスペース）／チャンネル／DM／スレッド／リアクション／ファイル添付／メンション／図表描画（Mermaid・PlantUML）に対応します。</p>
+        <table>
+          <thead><tr>
+            <th data-ja="分類" data-en="Category">分類</th>
+            <th data-ja="採用技術" data-en="Technology">採用技術</th>
+            <th data-ja="備考" data-en="Notes">備考</th>
+          </tr></thead>
+          <tbody>
+            <tr><td data-ja="バックエンド" data-en="Backend">バックエンド</td><td>Python / FastAPI</td><td data-ja="REST API + WebSocket" data-en="REST API + WebSocket">REST API + WebSocket</td></tr>
+            <tr><td data-ja="リアルタイム通信" data-en="Realtime">リアルタイム通信</td><td data-ja="WebSocket（プロセス内 ConnectionManager）" data-en="WebSocket (in-process ConnectionManager)">WebSocket（プロセス内 ConnectionManager）</td><td data-ja="外部ブローカー不使用" data-en="No external broker">外部ブローカー不使用</td></tr>
+            <tr><td data-ja="データストア" data-en="Data store">データストア</td><td data-ja="SQLite（SQLAlchemy ORM）" data-en="SQLite (SQLAlchemy ORM)">SQLite（SQLAlchemy ORM）</td><td data-ja="オンプレミスのローカルファイル" data-en="On-premises local file">オンプレミスのローカルファイル</td></tr>
+            <tr><td data-ja="認証" data-en="Auth">認証</td><td>PBKDF2-HMAC-SHA256 + HMAC</td><td data-ja="標準ライブラリのみ（外部依存なし）" data-en="Standard library only (no external deps)">標準ライブラリのみ（外部依存なし）</td></tr>
+            <tr><td data-ja="フロントエンド" data-en="Frontend">フロントエンド</td><td data-ja="素のHTML / CSS / JavaScript（SPA）" data-en="Vanilla HTML / CSS / JavaScript (SPA)">素のHTML / CSS / JavaScript（SPA）</td><td data-ja="ローカル配信・CDN不使用" data-en="Local hosting, no CDN">ローカル配信・CDN不使用</td></tr>
+            <tr><td data-ja="図表描画" data-en="Diagrams">図表描画</td><td data-ja="Mermaid（同梱） / PlantUML（同梱jar + JRE）" data-en="Mermaid (bundled) / PlantUML (bundled jar + JRE)">Mermaid（同梱） / PlantUML（同梱jar + JRE）</td><td data-ja="サーバー側でSVG生成" data-en="Server-side SVG generation">サーバー側でSVG生成</td></tr>
+            <tr><td data-ja="セキュリティ" data-en="Security">セキュリティ</td><td data-ja="TLS（自己署名自動生成）＋ プライベートNW限定ガード" data-en="TLS (auto self-signed) + private-network guard">TLS（自己署名自動生成）＋ プライベートNW限定ガード</td><td data-ja="グローバルIPを遮断" data-en="Blocks global IPs">グローバルIPを遮断</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 data-ja="2. システム全体構成" data-en="2. Overall System Architecture">2. システム全体構成</h2>
+      <div class="diagram">
+        <pre class="mermaid" data-lang="ja">
+flowchart LR
+  subgraph LAN["社内LAN（プライベートネットワーク・閉域網）"]
+    direction LR
+    subgraph Client["クライアント（ブラウザ SPA）"]
+      UI["index.html / app.js<br/>markdown.js / mermaid.min.js"]
+    end
+
+    subgraph Server["社内サーバー（uvicorn + FastAPI）"]
+      Guard{{"PrivateNetworkGuard<br/>ミドルウェア"}}
+      API["REST API ルーター群"]
+      WS["WebSocket /ws<br/>ConnectionManager"]
+      SVC["サービス層 / 認証 / セキュリティ"]
+      ORM["SQLAlchemy ORM"]
+      RENDER["PlantUML レンダラ"]
+    end
+
+    DB[("SQLite<br/>localchat.db")]
+    FILES[("ローカルファイル<br/>data/uploads")]
+    JAR["plantuml.jar + JRE17"]
+  end
+
+  Internet(("インターネット")) -. 遮断 .-x Guard
+
+  UI -- "HTTPS (REST)" --> Guard
+  UI -- "WSS (リアルタイム)" --> Guard
+  Guard --> API
+  Guard --> WS
+  API --> SVC
+  WS --> SVC
+  SVC --> ORM
+  ORM --> DB
+  API --> FILES
+  RENDER --> JAR
+  API --> RENDER
+  WS -- "イベント配信" --> UI
+        </pre>
+        <pre class="mermaid" data-lang="en">
+flowchart LR
+  subgraph LAN["Corporate LAN (private, closed network)"]
+    direction LR
+    subgraph Client["Client (browser SPA)"]
+      UI["index.html / app.js<br/>markdown.js / mermaid.min.js"]
+    end
+
+    subgraph Server["On-prem server (uvicorn + FastAPI)"]
+      Guard{{"PrivateNetworkGuard<br/>middleware"}}
+      API["REST API routers"]
+      WS["WebSocket /ws<br/>ConnectionManager"]
+      SVC["Service / Auth / Security"]
+      ORM["SQLAlchemy ORM"]
+      RENDER["PlantUML renderer"]
+    end
+
+    DB[("SQLite<br/>localchat.db")]
+    FILES[("Local files<br/>data/uploads")]
+    JAR["plantuml.jar + JRE17"]
+  end
+
+  Internet(("Internet")) -. blocked .-x Guard
+
+  UI -- "HTTPS (REST)" --> Guard
+  UI -- "WSS (realtime)" --> Guard
+  Guard --> API
+  Guard --> WS
+  API --> SVC
+  WS --> SVC
+  SVC --> ORM
+  ORM --> DB
+  API --> FILES
+  RENDER --> JAR
+  API --> RENDER
+  WS -- "event push" --> UI
+        </pre>
+        <div class="caption"
+             data-ja="図1. システム全体構成。社内LAN内で完結し、グローバルIPからのアクセスはミドルウェアで遮断される。"
+             data-en="Fig. 1 Overall architecture. Everything runs within the corporate LAN; access from global IPs is blocked by middleware.">図1. システム全体構成。社内LAN内で完結し、グローバルIPからのアクセスはミドルウェアで遮断される。</div>
+      </div>
+
+      <h2 data-ja="3. 設計図の構成" data-en="3. Document Structure">3. 設計図の構成</h2>
+      <div class="grid">
+        <div class="card">
+          <h3 data-ja="アーキテクチャ図" data-en="Architecture">アーキテクチャ図</h3>
+          <p data-ja="レイヤ構成、コンポーネント分割、デプロイ構成を示します。" data-en="Layered structure, component breakdown, and deployment.">レイヤ構成、コンポーネント分割、デプロイ構成を示します。</p>
+          <a href="architecture.html" data-ja="開く →" data-en="Open →">開く →</a>
+        </div>
+        <div class="card">
+          <h3 data-ja="クラス図・ER図" data-en="Class &amp; ER Diagram">クラス図・ER図</h3>
+          <p data-ja="ドメインモデル（ORMエンティティ）と関連、バックエンドのモジュール構成を示します。" data-en="Domain model (ORM entities), relationships, and backend module structure.">ドメインモデル（ORMエンティティ）と関連、バックエンドのモジュール構成を示します。</p>
+          <a href="class-diagram.html" data-ja="開く →" data-en="Open →">開く →</a>
+        </div>
+        <div class="card">
+          <h3 data-ja="シーケンス図" data-en="Sequence Diagrams">シーケンス図</h3>
+          <p data-ja="ログイン、メッセージ送信＋リアルタイム配信、招待参加などの処理シーケンスを示します。" data-en="Sequences such as login, message send + realtime delivery, and joining via invite.">ログイン、メッセージ送信＋リアルタイム配信、招待参加などの処理シーケンスを示します。</p>
+          <a href="sequence.html" data-ja="開く →" data-en="Open →">開く →</a>
+        </div>
+        <div class="card">
+          <h3 data-ja="フローチャート図" data-en="Flowcharts">フローチャート図</h3>
+          <p data-ja="アクセス制御・認証・権限判定・図表レンダリングなどの分岐ロジックを示します。" data-en="Branching logic for access control, authentication, authorization, and diagram rendering.">アクセス制御・認証・権限判定・図表レンダリングなどの分岐ロジックを示します。</p>
+          <a href="flowchart.html" data-ja="開く →" data-en="Open →">開く →</a>
+        </div>
+      </div>
+
+      <footer data-ja="LocalChat 基本設計書 — 完全オフライン社内チャット / 本ドキュメントはオフラインで閲覧できます。"
+              data-en="LocalChat Basic Design Document — fully offline internal chat / This document can be viewed offline.">LocalChat 基本設計書 — 完全オフライン社内チャット / 本ドキュメントはオフラインで閲覧できます。</footer>
+    </main>
+  </div>
+
+  <script src="../frontend/static/vendor/mermaid.min.js"></script>
+  <script src="assets/i18n.js"></script>
+</body>
+</html>

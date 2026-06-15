@@ -1,0 +1,10 @@
+<Configuration>
+  <!-- LocalChat 動作確認用 Windows サンドボックス設定 -->
+  <!-- ネットワークを有効化（ホストの LAN IP へ接続できる） -->
+  <Networking>Default</Networking>
+  <!-- 起動時に Edge で LocalChat を開く -->
+  <!-- ※ ホストの IP が異なる場合は下の URL を書き換えてください -->
+  <LogonCommand>
+    <Command>cmd.exe /c start msedge "https://192.168.200.221:8777"</Command>
+  </LogonCommand>
+</Configuration>

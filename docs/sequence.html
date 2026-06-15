@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LocalChat 基本設計書 | シーケンス図</title>
+  <link rel="stylesheet" href="assets/design.css" />
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">Local<span>Chat</span></div>
+      <div class="sub" data-ja="基本設計書 v0.1.0" data-en="Basic Design Document v0.1.0">基本設計書 v0.1.0</div>
+      <nav>
+        <a href="index.html" data-ja="概要・全体像" data-en="Overview">概要・全体像</a>
+        <a href="architecture.html" data-ja="アーキテクチャ図" data-en="Architecture">アーキテクチャ図</a>
+        <a href="class-diagram.html" data-ja="クラス図・ER図" data-en="Class &amp; ER Diagram">クラス図・ER図</a>
+        <a href="sequence.html" class="active" data-ja="シーケンス図" data-en="Sequence Diagrams">シーケンス図</a>
+        <a href="flowchart.html" data-ja="フローチャート図" data-en="Flowcharts">フローチャート図</a>
+        <div class="nav-section" data-ja="ツール" data-en="Tools">ツール</div>
+        <a href="diagram-lab.html" data-ja="図エラー検証ラボ" data-en="Diagram Lab">図エラー検証ラボ</a>
+        <div class="nav-section" data-ja="関連資料" data-en="References">関連資料</div>
+        <a href="要件定義書.html" data-ja="要件定義書" data-en="Requirements (JA)">要件定義書</a>
+      </nav>
+    </aside>
+
+    <main class="content">
+      <h1 data-ja="シーケンス図" data-en="Sequence Diagrams">シーケンス図</h1>
+      <p class="lead" data-ja="主要ユースケースの処理シーケンスを示します。" data-en="Processing sequences for the main use cases.">主要ユースケースの処理シーケンスを示します。</p>
+
+      <h2 data-ja="1. ユーザー登録・ログイン" data-en="1. Registration / Login">1. ユーザー登録・ログイン</h2>
+      <div class="diagram">
+        <pre class="mermaid" data-lang="ja">
+sequenceDiagram
+  autonumber
+  actor U as 利用者(ブラウザ)
+  participant API as auth ルーター
+  participant SEC as security
+  participant DB as SQLite
+
+  U->>API: POST /api/auth/login {username, password}
+  API->>DB: ユーザー検索(username)
+  DB-->>API: User
+  API->>SEC: verify_password(pw, hash)
+  SEC-->>API: 照合結果
+  alt 認証成功
+    API->>SEC: create_access_token(user_id)
+    SEC-->>API: HMAC署名トークン
+    API-->>U: 200 {access_token, user}
+    Note over U: トークンをローカルに保存し<br/>以降のAPI/WSで利用
+  else 認証失敗
+    API-->>U: 401 認証エラー
+  end
+        </pre>
+        <pre class="mermaid" data-lang="en">
+sequenceDiagram
+  autonumber
+  actor U as User (browser)
+  participant API as auth router
+  participant SEC as security
+  participant DB as SQLite
+
+  U->>API: POST /api/auth/login {username, password}
+  API->>DB: find user(username)
+  DB-->>API: User
+  API->>SEC: verify_password(pw, hash)
+  SEC-->>API: result
+  alt success
+    API->>SEC: create_access_token(user_id)
+    SEC-->>API: HMAC-signed token
+    API-->>U: 200 {access_token, user}
+    Note over U: Store token locally<br/>use for later API/WS calls
+  else failure
+    API-->>U: 401 auth error
+  end
+        </pre>
+        <div class="caption" data-ja="図7. ログイン。トークンは PBKDF2 で検証後、HMAC-SHA256 署名付きで発行される。" data-en="Fig. 7 Login. After PBKDF2 verification, an HMAC-SHA256 signed token is issued.">図7. ログイン。トークンは PBKDF2 で検証後、HMAC-SHA256 署名付きで発行される。</div>
+      </div>
+
+      <h2 data-ja="2. メッセージ送信とリアルタイム配信" data-en="2. Message Send &amp; Realtime Delivery">2. メッセージ送信とリアルタイム配信</h2>
+      <div class="diagram">
+        <pre class="mermaid" data-lang="ja">
+sequenceDiagram
+  autonumber
+  actor U as 送信者
+  participant API as messages ルーター
+  participant DEP as get_current_user
+  participant SVC as services
+  participant DB as SQLite
+  participant WSM as ConnectionManager
+  actor O as 他メンバー(接続中)
+
+  U->>API: POST /api/channels/{id}/messages
+  API->>DEP: トークン検証
+  DEP-->>API: current_user
+  API->>SVC: require_membership(server, user)
+  SVC-->>API: OK
+  API->>DB: Message を保存 + 添付を紐付け
+  DB-->>API: 保存済みメッセージ
+  API->>SVC: serialize_message()
+  SVC-->>API: MessagePublic
+  API->>SVC: 通知対象ユーザーID解決
+  SVC-->>API: [user_ids]
+  API->>WSM: send_to_users(targets, message_created)
+  WSM-->>O: WS イベント {type: message_created}
+  Note over API: 本文に @メンションがあれば<br/>対象へ mention イベントも送信
+  API-->>U: 201 MessagePublic
+  O->>O: 画面にメッセージを追加描画
+        </pre>
+        <pre class="mermaid" data-lang="en">
+sequenceDiagram
+  autonumber
+  actor U as Sender
+  participant API as messages router
+  participant DEP as get_current_user
+  participant SVC as services
+  participant DB as SQLite
+  participant WSM as ConnectionManager
+  actor O as Other members (online)
+
+  U->>API: POST /api/channels/{id}/messages
+  API->>DEP: verify token
+  DEP-->>API: current_user
+  API->>SVC: require_membership(server, user)
+  SVC-->>API: OK
+  API->>DB: save Message + link attachments
+  DB-->>API: saved message
+  API->>SVC: serialize_message()
+  SVC-->>API: MessagePublic
+  API->>SVC: resolve target user IDs
+  SVC-->>API: [user_ids]
+  API->>WSM: send_to_users(targets, message_created)
+  WSM-->>O: WS event {type: message_created}
+  Note over API: If body has @mentions,<br/>also send mention event
+  API-->>U: 201 MessagePublic
+  O->>O: append message to view
+        </pre>
+        <div class="caption" data-ja="図8. メッセージ送信。保存後にWebSocketで接続中の対象メンバーへリアルタイム配信し、メンションは個別通知する。" data-en="Fig. 8 Message send. After saving, it is delivered in realtime to online targets over WebSocket; mentions are notified individually.">図8. メッセージ送信。保存後にWebSocketで接続中の対象メンバーへリアルタイム配信し、メンションは個別通知する。</div>
+      </div>
+
+      <h2 data-ja="3. WebSocket 接続確立" data-en="3. WebSocket Connection">3. WebSocket 接続確立</h2>
+      <div class="diagram">
+        <pre class="mermaid" data-lang="ja">
+sequenceDiagram
+  autonumber
+  actor U as ブラウザ
+  participant GUARD as PrivateNetworkGuard
+  participant WS as ws エンドポイント
+  participant SEC as security
+  participant WSM as ConnectionManager
+
+  U->>GUARD: WSS /ws?token=...
+  alt 社内プライベートIP
+    GUARD->>WS: ハンドシェイク継続
+    WS->>SEC: decode_access_token(token)
+    SEC-->>WS: user_id
+    alt トークン有効かつ有効ユーザー
+      WS->>WSM: connect(user_id, websocket)
+      WSM-->>U: accept（接続確立）
+      loop 接続中
+        U->>WS: ping（受信ループ）
+      end
+      U-->>WS: 切断
+      WS->>WSM: disconnect(user_id, websocket)
+    else 無効
+      WS-->>U: close(4401)
+    end
+  else 社外グローバルIP
+    GUARD-->>U: close(4403)
+  end
+        </pre>
+        <pre class="mermaid" data-lang="en">
+sequenceDiagram
+  autonumber
+  actor U as Browser
+  participant GUARD as PrivateNetworkGuard
+  participant WS as ws endpoint
+  participant SEC as security
+  participant WSM as ConnectionManager
+
+  U->>GUARD: WSS /ws?token=...
+  alt private (LAN) IP
+    GUARD->>WS: continue handshake
+    WS->>SEC: decode_access_token(token)
+    SEC-->>WS: user_id
+    alt valid token and active user
+      WS->>WSM: connect(user_id, websocket)
+      WSM-->>U: accept (connected)
+      loop while connected
+        U->>WS: ping (receive loop)
+      end
+      U-->>WS: disconnect
+      WS->>WSM: disconnect(user_id, websocket)
+    else invalid
+      WS-->>U: close(4401)
+    end
+  else global IP
+    GUARD-->>U: close(4403)
+  end
+        </pre>
+        <div class="caption" data-ja="図9. WebSocket接続。ネットワークガード → トークン検証 → 接続登録の順に多層で検証する。" data-en="Fig. 9 WebSocket connection. Validated in layers: network guard, then token, then connection registration.">図9. WebSocket接続。ネットワークガード → トークン検証 → 接続登録の順に多層で検証する。</div>
+      </div>
+
+      <h2 data-ja="4. 招待コードによるサーバー参加" data-en="4. Joining a Server via Invite Code">4. 招待コードによるサーバー参加</h2>
+      <div class="diagram">
+        <pre class="mermaid" data-lang="ja">
+sequenceDiagram
+  autonumber
+  actor A as 管理者/モデレーター
+  actor B as 参加者
+  participant INV as invites ルーター
+  participant SVC as services
+  participant DB as SQLite
+
+  A->>INV: POST /servers/{id}/invites
+  INV->>SVC: require_role(admin/moderator)
+  SVC-->>INV: OK
+  INV->>DB: 招待コード生成・保存
+  DB-->>INV: ServerInvite
+  INV-->>A: 201 {code, ...}
+  Note over A,B: 招待コードを共有
+
+  B->>INV: GET /api/invites/{code}（プレビュー）
+  INV->>DB: コード検証(有効期限/回数/失効)
+  DB-->>INV: Server
+  INV-->>B: {server_name, already_member}
+  B->>INV: POST /api/invites/{code}/accept
+  INV->>DB: ServerMember(role=member) 追加 + uses++
+  DB-->>INV: OK
+  INV-->>B: 200 ServerPublic（参加完了）
+        </pre>
+        <pre class="mermaid" data-lang="en">
+sequenceDiagram
+  autonumber
+  actor A as Admin/Moderator
+  actor B as Joiner
+  participant INV as invites router
+  participant SVC as services
+  participant DB as SQLite
+
+  A->>INV: POST /servers/{id}/invites
+  INV->>SVC: require_role(admin/moderator)
+  SVC-->>INV: OK
+  INV->>DB: generate + save invite code
+  DB-->>INV: ServerInvite
+  INV-->>A: 201 {code, ...}
+  Note over A,B: Share the invite code
+
+  B->>INV: GET /api/invites/{code} (preview)
+  INV->>DB: validate code (expiry/uses/revoked)
+  DB-->>INV: Server
+  INV-->>B: {server_name, already_member}
+  B->>INV: POST /api/invites/{code}/accept
+  INV->>DB: add ServerMember(role=member) + uses++
+  DB-->>INV: OK
+  INV-->>B: 200 ServerPublic (joined)
+        </pre>
+        <div class="caption" data-ja="図10. 招待参加。直接参加は禁止され、有効な招待コードの提示のみで参加できる。" data-en="Fig. 10 Joining via invite. Direct joining is disallowed; only a valid invite code grants access.">図10. 招待参加。直接参加は禁止され、有効な招待コードの提示のみで参加できる。</div>
+      </div>
+
+      <h2 data-ja="5. ファイル添付付きメッセージ" data-en="5. Message with File Attachment">5. ファイル添付付きメッセージ</h2>
+      <div class="diagram">
+        <pre class="mermaid" data-lang="ja">
+sequenceDiagram
+  autonumber
+  actor U as 送信者
+  participant F as files ルーター
+  participant M as messages ルーター
+  participant FS as ローカルストレージ
+  participant DB as SQLite
+
+  U->>F: POST /api/files（ファイル本体）
+  F->>F: サイズ上限チェック
+  F->>FS: UUID名でローカル保存
+  F->>DB: Attachment(message_id=null) 保存
+  DB-->>F: Attachment
+  F-->>U: 201 {id, filename, size}
+  Note over U: 添付IDを保持して送信
+
+  U->>M: POST .../messages {attachment_ids:[id]}
+  M->>DB: Message 保存
+  M->>DB: 自分の未紐付け添付を message に紐付け
+  DB-->>M: OK
+  M-->>U: 201 MessagePublic（添付込み）
+        </pre>
+        <pre class="mermaid" data-lang="en">
+sequenceDiagram
+  autonumber
+  actor U as Sender
+  participant F as files router
+  participant M as messages router
+  participant FS as Local storage
+  participant DB as SQLite
+
+  U->>F: POST /api/files (file body)
+  F->>F: check size limit
+  F->>FS: save locally with UUID name
+  F->>DB: save Attachment(message_id=null)
+  DB-->>F: Attachment
+  F-->>U: 201 {id, filename, size}
+  Note over U: Keep attachment id, then send
+
+  U->>M: POST .../messages {attachment_ids:[id]}
+  M->>DB: save Message
+  M->>DB: link own unlinked attachments to message
+  DB-->>M: OK
+  M-->>U: 201 MessagePublic (with attachment)
+        </pre>
+        <div class="caption" data-ja="図11. ファイル添付。アップロードとメッセージ送信を分離し、本人がアップロードした未紐付け添付のみを紐付ける。" data-en="Fig. 11 File attachment. Upload and message send are separated; only the user's own unlinked attachments are linked.">図11. ファイル添付。アップロードとメッセージ送信を分離し、本人がアップロードした未紐付け添付のみを紐付ける。</div>
+      </div>
+
+      <footer data-ja="LocalChat 基本設計書 — シーケンス図" data-en="LocalChat Basic Design Document — Sequence Diagrams">LocalChat 基本設計書 — シーケンス図</footer>
+    </main>
+  </div>
+
+  <script src="../frontend/static/vendor/mermaid.min.js"></script>
+  <script src="assets/i18n.js"></script>
+</body>
+</html>
