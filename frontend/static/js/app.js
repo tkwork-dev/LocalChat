@@ -1633,6 +1633,33 @@ function setupEvents() {
     e.target.value = "";
   });
 
+  // クリップボードから画像ペースト（スクリーンショット等）
+  $("#message-input").addEventListener("paste", (e) => {
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith("image/")) {
+        e.preventDefault();
+        const blob = item.getAsFile();
+        if (blob) {
+          // ファイル名を生成（例: paste_20260615_143025.png）
+          const now = new Date();
+          const ts = now.getFullYear().toString()
+            + String(now.getMonth() + 1).padStart(2, "0")
+            + String(now.getDate()).padStart(2, "0")
+            + "_"
+            + String(now.getHours()).padStart(2, "0")
+            + String(now.getMinutes()).padStart(2, "0")
+            + String(now.getSeconds()).padStart(2, "0");
+          const ext = item.type.split("/")[1] || "png";
+          const file = new File([blob], `paste_${ts}.${ext}`, { type: item.type });
+          uploadFile(file);
+        }
+        break;
+      }
+    }
+  });
+
   // 絵文字
   $("#emoji-btn").onclick = toggleComposerEmoji;
   document.addEventListener("click", (e) => {
