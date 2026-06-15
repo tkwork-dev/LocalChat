@@ -253,3 +253,19 @@ You are free to use, modify, and distribute it, provided the copyright and
 permission notice are retained. See `LICENSE` for details.
 
 Copyright (c) 2026 tkwork
+
+## Notice: Telecommunications Business Act (Japan)
+
+This application is designed for **internal use within a closed corporate LAN**. Under such usage, registration or notification under Japan's Telecommunications Business Act is generally not required.
+
+However, if you operate this system in a manner that involves **communication with external third parties** (e.g., providing the service to partner companies, publishing on the internet, or offering it as a SaaS), it **may constitute a telecommunications business** and require prior notification or registration with the Ministry of Internal Affairs and Communications (MIC).
+
+| Usage | Applicability | Procedure |
+|-------|--------------|-----------|
+| Internal use only (closed corporate LAN) | Likely not applicable | Generally none |
+| Provided to affiliates / business partners | May be applicable | Confirm notification requirement |
+| Offered to the public as SaaS, etc. | Likely applicable | Registration or notification required |
+
+If you change the deployment to involve external communication, **consult with the relevant Regional Bureau of Telecommunications before starting operation**.
+
+> For detailed legal analysis, see [law.md](law.md) (Japanese). This notice is general information, not legal advice. Consult a legal professional for definitive guidance.
