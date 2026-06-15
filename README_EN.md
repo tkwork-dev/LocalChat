@@ -1,6 +1,6 @@
 # LocalChat - Fully Offline Internal Chat
 
-[🇯🇵 日本語](README.md) | **🇬🇧 English**
+[日本語](README.md) | **English**
 
 A self-hosted internal communication tool that operates entirely within an
 on-premises environment (closed network) with zero external internet
