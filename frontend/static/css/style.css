@@ -434,7 +434,7 @@ input, textarea { font-family: inherit; }
   font-size: 12px; font-weight: 600; color: var(--text-muted);
   background: var(--bg-elevated); border: 1px solid var(--border);
   border-radius: 4px; padding: 2px 8px; margin-bottom: 8px;
-  display: inline-block; font-family: Consolas, "Courier New", monospace;
+  display: block; width: fit-content; font-family: Consolas, "Courier New", monospace;
 }
 .msg-content pre.code-block code {
   background: none; padding: 0; white-space: pre;
