@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>週次進捗レポート - 2026年6月第3週</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: "Segoe UI", "Meiryo", sans-serif; background: #f4f6f9; color: #2c3e50; padding: 40px; line-height: 1.8; }
+    .container { max-width: 800px; margin: 0 auto; background: #fff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); padding: 40px; }
+    h1 { font-size: 24px; border-left: 5px solid #3498db; padding-left: 14px; margin-bottom: 8px; }
+    .meta { color: #7f8c8d; font-size: 13px; margin-bottom: 24px; }
+    h2 { font-size: 18px; color: #2980b9; margin-top: 28px; margin-bottom: 12px; border-bottom: 1px solid #ecf0f1; padding-bottom: 6px; }
+    table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+    th, td { border: 1px solid #ddd; padding: 10px 12px; text-align: left; font-size: 14px; }
+    th { background: #3498db; color: #fff; }
+    tr:nth-child(even) { background: #f9fafb; }
+    .status { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+    .done { background: #d4efdf; color: #27ae60; }
+    .progress { background: #fdebd0; color: #e67e22; }
+    .todo { background: #fadbd8; color: #e74c3c; }
+    .summary { background: #eaf2f8; border-radius: 8px; padding: 16px; margin-top: 20px; }
+    .summary strong { color: #2980b9; }
+    footer { margin-top: 32px; text-align: center; color: #bdc3c7; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>週次進捗レポート</h1>
+    <div class="meta">2026年6月第3週（6/15 〜 6/19） | プロジェクト: LocalChat | 作成者: 田中</div>
+
+    <h2>📊 タスク進捗</h2>
+    <table>
+      <thead>
+        <tr><th>タスク</th><th>担当</th><th>ステータス</th><th>備考</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>ファイルD&Dアップロード</td><td>鈴木</td><td><span class="status done">完了</span></td><td>チャットエリアへのドロップ対応</td></tr>
+        <tr><td>HTMLプレビュー表示</td><td>鈴木</td><td><span class="status done">完了</span></td><td>iframe + srcdoc方式</td></tr>
+        <tr><td>Markdownプレビュー</td><td>田中</td><td><span class="status done">完了</span></td><td>LCMarkdownでレンダリング</td></tr>
+        <tr><td>PlantUMLプレビュー</td><td>田中</td><td><span class="status done">完了</span></td><td>SVG変換、フォールバック対応</td></tr>
+        <tr><td>返信UI（Discord風）</td><td>佐藤</td><td><span class="status progress">進行中</span></td><td>ネストインデント調整中</td></tr>
+        <tr><td>音声通話機能</td><td>—</td><td><span class="status todo">未着手</span></td><td>次フェーズ予定</td></tr>
+      </tbody>
+    </table>
+
+    <h2>🎯 来週の予定</h2>
+    <ul style="padding-left: 20px; margin-top: 8px;">
+      <li>返信UIの最終調整とテスト</li>
+      <li>パフォーマンス計測（100ユーザー同時接続テスト）</li>
+      <li>ドキュメント更新（設計書への反映）</li>
+    </ul>
+
+    <div class="summary">
+      <strong>全体進捗:</strong> 計画タスク 12件中 9件完了（75%）。スケジュール通り。
+    </div>
+
+    <footer>LocalChat プロジェクト — 社内限定配布</footer>
+  </div>
+</body>
+</html>

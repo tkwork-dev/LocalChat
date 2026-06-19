@@ -305,7 +305,7 @@ input, textarea { font-family: inherit; }
   border-left: 2px solid var(--accent, #5865f2); padding-left: 8px; margin-bottom: 2px;
 }
 .msg-reply-ref:hover { color: var(--text); }
-.msg-reply { margin-left: 28px; border-left: 2px solid var(--border); padding-left: 10px; }
+.msg-reply { border-left: 3px solid var(--accent, #5865f2); padding-left: 14px; }
 .reply-author { font-weight: 600; color: var(--text); }
 .reply-snippet { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 300px; }
 .msg-highlight { background: color-mix(in srgb, var(--accent, #5865f2) 15%, transparent); transition: background 0.3s; }

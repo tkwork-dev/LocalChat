@@ -655,11 +655,28 @@ async function renderPlantUml(code, output, key) {
   }
 }
 
+// 返信のネスト深度を算出（最大5段階で制限）
+function getReplyDepth(m) {
+  let depth = 0;
+  let current = m;
+  while (current.parent_id && depth < 5) {
+    depth++;
+    const parent = state.messages.find((p) => p.id === current.parent_id);
+    if (!parent) break;
+    current = parent;
+  }
+  return depth;
+}
+
 function renderMessage(m) {
   const el = document.createElement("div");
   el.className = m.parent_id ? "msg msg-reply" : "msg";
   el.dataset.id = m.id;
-  if (m.parent_id) el.dataset.parent = m.parent_id;
+  if (m.parent_id) {
+    el.dataset.parent = m.parent_id;
+    const depth = getReplyDepth(m);
+    el.style.marginLeft = (48 * depth) + "px";
+  }
 
   const isMine = m.author.id === state.user.id;
   let contentHtml;

@@ -1,0 +1,81 @@
+@startuml クラス図（主要エンティティ）
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam classAttributeIconSize 0
+
+title LocalChat ドメインモデル（主要エンティティ）
+
+class User {
+  +id : int
+  +username : str
+  +display_name : str
+  +password_hash : str
+  +avatar_url : str?
+  +status_message : str?
+  +is_active : bool
+  +created_at : datetime
+}
+
+class Server {
+  +id : int
+  +name : str
+  +icon_url : str?
+  +owner_id : int
+  +created_at : datetime
+}
+
+class Channel {
+  +id : int
+  +server_id : int
+  +name : str
+  +topic : str?
+  +type : str
+  +position : int
+}
+
+class Message {
+  +id : int
+  +channel_id : int?
+  +dm_channel_id : int?
+  +author_id : int
+  +content : str
+  +parent_id : int?
+  +is_deleted : bool
+  +edited_at : datetime?
+  +created_at : datetime
+}
+
+class Attachment {
+  +id : int
+  +message_id : int?
+  +uploader_id : int
+  +filename : str
+  +stored_name : str
+  +content_type : str
+  +size : int
+}
+
+class Reaction {
+  +id : int
+  +message_id : int
+  +user_id : int
+  +emoji : str
+}
+
+class DMChannel {
+  +id : int
+  +is_group : bool
+  +name : str?
+}
+
+User "1" -- "*" Server : owns >
+Server "1" -- "*" Channel : has >
+Channel "1" -- "*" Message : contains >
+User "1" -- "*" Message : writes >
+Message "1" -- "*" Attachment : has >
+Message "1" -- "*" Reaction : receives >
+Message "0..1" -- "*" Message : parent >
+User "*" -- "*" DMChannel : participates >
+DMChannel "1" -- "*" Message : contains >
+
+@enduml

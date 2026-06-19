@@ -1,0 +1,30 @@
+@startuml ログインシーケンス
+!theme plain
+skinparam backgroundColor #FEFEFE
+
+title ログイン処理シーケンス
+
+actor "ユーザー" as User
+participant "ブラウザ (SPA)" as Browser
+participant "FastAPI サーバー" as Server
+database "SQLite" as DB
+
+User -> Browser : ユーザー名・パスワード入力
+Browser -> Server : POST /api/auth/login\n{username, password}
+Server -> DB : SELECT * FROM users\nWHERE username = ?
+DB --> Server : ユーザーレコード
+
+alt パスワード検証成功
+    Server -> Server : PBKDF2-SHA256 で\nハッシュ照合
+    Server -> Server : HMAC-SHA256 で\nアクセストークン生成
+    Server --> Browser : 200 OK\n{token, user}
+    Browser -> Browser : localStorage に\nトークン保存
+    Browser -> Server : GET /ws (WebSocket接続)
+    Server --> Browser : WSS 接続確立
+    Browser --> User : チャット画面表示
+else パスワード不一致
+    Server --> Browser : 401 Unauthorized
+    Browser --> User : エラーメッセージ表示
+end
+
+@enduml

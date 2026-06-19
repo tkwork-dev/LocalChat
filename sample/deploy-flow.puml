@@ -1,0 +1,49 @@
+@startuml デプロイフロー
+!theme plain
+skinparam backgroundColor #FEFEFE
+
+title LocalChat デプロイ手順フローチャート
+
+start
+
+:git clone / zip展開;
+
+:requirements.txt インストール
+  pip install -r requirements.txt;
+
+:.env.example → .env にコピー;
+
+:SECRET_KEY を変更;
+
+if (TLS (HTTPS) を使う?) then (はい)
+  if (社内CA証明書がある?) then (はい)
+    :SSL_CERTFILE / SSL_KEYFILE に\n証明書パスを設定;
+  else (いいえ)
+    :TLS_AUTO_GENERATE=true のまま\n（起動時に自己署名証明書を自動生成）;
+  endif
+else (いいえ)
+  :SSL_CERTFILE / SSL_KEYFILE を空にする\n（HTTP起動）;
+endif
+
+if (PlantUML図を使う?) then (はい)
+  :PLANTUML_JAR にjarパスを設定;
+  :JAVA_BIN にjava実行ファイルを設定;
+else (いいえ)
+  :PLANTUML_JAR を空のまま\n（ソース表示フォールバック）;
+endif
+
+:TZ_OFFSET_HOURS を設定\n（日本: 9）;
+
+:python run.py で起動;
+
+:ブラウザで https://サーバーIP:8777 にアクセス;
+
+:最初のユーザーを「新規登録」で作成;
+
+:サーバー（ワークスペース）を作成;
+
+:招待コードを発行して社内メンバーに共有;
+
+stop
+
+@enduml
