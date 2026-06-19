@@ -19,13 +19,11 @@ const state = {
   members: [],
   ws: null,
   messages: [],          // 現在表示中のメッセージ
-  replyTo: null,         // スレッド返信先（親メッセージ）
+  replyTo: null,         // 返信先メッセージID
   editingId: null,       // 編集中メッセージID（インライン編集）
   pendingAttachments: [], // 送信前の添付（{id, filename}）
   unread: { channels: {}, dms: {} },
-  threadParentId: null,
 };
-
 // よく使う絵文字（ローカル＝Unicode絵文字。外部CDN不使用）
 const EMOJIS = ["👍","👎","😀","😂","😍","😎","😢","😡","🎉","🙏","🔥","💯",
   "❤️","✅","❌","👀","🚀","💡","🤔","😅","👏","🙌","💪","🍻"];
@@ -127,7 +125,6 @@ function resetAppState() {
     currentServerId: null, currentChannelId: null, currentDmId: null,
     channels: [], members: [], messages: [], replyTo: null, editingId: null,
     pendingAttachments: [], unread: { channels: {}, dms: {} },
-    threadParentId: null, threadMessages: [],
   });
 }
 async function switchAccount(token) {
@@ -387,8 +384,8 @@ async function selectChannel(channelId) {
   if (state.editingId) cancelEdit();
   state.currentChannelId = channelId;
   state.currentDmId = null;
-  state.threadParentId = null;
-  closeThreadPanel();
+  state.replyTo = null;
+  cancelReply();
   renderChannels();
 
   const ch = state.channels.find((c) => c.id === channelId);
@@ -478,8 +475,8 @@ async function selectDM(dmId) {
   state.view = "dm";
   state.currentDmId = dmId;
   state.currentChannelId = null;
-  state.threadParentId = null;
-  closeThreadPanel();
+  state.replyTo = null;
+  cancelReply();
   renderDMList();
   const dm = state.dms.find((d) => d.id === dmId);
   $("#chat-title").textContent = dm ? dmTitle(dm) : "";
@@ -501,9 +498,45 @@ function renderMessages() {
     container.innerHTML = `<div class="empty-state">まだメッセージがありません。最初の投稿をしましょう。</div>`;
     return;
   }
-  state.messages.forEach((m) => container.appendChild(renderMessage(m)));
+  // 返信を親メッセージの直下にグルーピングして表示する
+  const ordered = buildThreadedOrder(state.messages);
+  ordered.forEach((m) => container.appendChild(renderMessage(m)));
   container.scrollTop = container.scrollHeight;
   processDiagrams(container);
+}
+
+// メッセージを親子グルーピングで並べ替える
+// 親メッセージの直下に返信を配置（返信同士はID順）
+function buildThreadedOrder(messages) {
+  const roots = [];       // parent_idが無いメッセージ（時系列順）
+  const childMap = {};    // parent_id => [返信メッセージ]
+
+  messages.forEach((m) => {
+    if (m.parent_id) {
+      if (!childMap[m.parent_id]) childMap[m.parent_id] = [];
+      childMap[m.parent_id].push(m);
+    } else {
+      roots.push(m);
+    }
+  });
+
+  const result = [];
+  roots.forEach((m) => {
+    result.push(m);
+    // 親の直下に返信を挿入
+    if (childMap[m.id]) {
+      childMap[m.id].forEach((reply) => result.push(reply));
+    }
+  });
+
+  // 孤立した返信（親がまだ読み込まれていない場合）は末尾に追加
+  messages.forEach((m) => {
+    if (m.parent_id && !messages.some((p) => p.id === m.parent_id)) {
+      if (!result.includes(m)) result.push(m);
+    }
+  });
+
+  return result;
 }
 
 function renderContent(text) {
@@ -624,8 +657,9 @@ async function renderPlantUml(code, output, key) {
 
 function renderMessage(m) {
   const el = document.createElement("div");
-  el.className = "msg";
+  el.className = m.parent_id ? "msg msg-reply" : "msg";
   el.dataset.id = m.id;
+  if (m.parent_id) el.dataset.parent = m.parent_id;
 
   const isMine = m.author.id === state.user.id;
   let contentHtml;
@@ -641,8 +675,100 @@ function renderMessage(m) {
   let attachHtml = "";
   (m.attachments || []).forEach((a) => {
     const url = `/api/files/${a.id}?token=${encodeURIComponent(state.token)}`;
+    const ext = (a.filename || "").split(".").pop().toLowerCase();
     if (a.content_type.startsWith("image/")) {
       attachHtml += `<div class="attachment"><a href="${url}" target="_blank"><img src="${url}" alt="${escapeHtml(a.filename)}" /></a></div>`;
+    } else if (a.content_type === "text/html" || ext === "html" || ext === "htm") {
+      const frameId = `html-preview-${m.id}-${a.id}`;
+      const sourceId = `html-source-${m.id}-${a.id}`;
+      attachHtml += `<div class="attachment attachment-html-preview">
+        <div class="html-preview-header">
+          <span>📄 ${escapeHtml(a.filename)}</span>
+          <div class="html-preview-actions">
+            <button class="html-preview-btn" data-frame="${frameId}" data-source="${sourceId}" title="ソース表示">&lt;/&gt;</button>
+            <a href="${url}" target="_blank" class="html-preview-open" title="新しいタブで開く">↗</a>
+          </div>
+        </div>
+        <iframe id="${frameId}" sandbox="allow-scripts" class="html-preview-frame"></iframe>
+        <pre id="${sourceId}" class="html-source-view" style="display:none;"></pre>
+      </div>`;
+      // HTMLをfetchしてsrcdocに注入＋ソース保持
+      fetch(url).then(r => r.text()).then(html => {
+        const frame = document.getElementById(frameId);
+        if (frame) frame.srcdoc = html;
+        const source = document.getElementById(sourceId);
+        if (source) source.textContent = html;
+      }).catch(() => {});
+    } else if (ext === "md" || ext === "markdown") {
+      const previewId = `md-preview-${m.id}-${a.id}`;
+      const sourceId = `md-source-${m.id}-${a.id}`;
+      const openLinkId = `md-open-${m.id}-${a.id}`;
+      attachHtml += `<div class="attachment attachment-md-preview">
+        <div class="html-preview-header">
+          <span>📝 ${escapeHtml(a.filename)}</span>
+          <div class="html-preview-actions">
+            <button class="html-preview-btn" data-frame="${previewId}" data-source="${sourceId}" title="ソース表示">&lt;/&gt;</button>
+            <a id="${openLinkId}" href="#" target="_blank" class="html-preview-open" title="新しいタブで開く">↗</a>
+          </div>
+        </div>
+        <div id="${previewId}" class="md-preview-body msg-content"></div>
+        <pre id="${sourceId}" class="html-source-view" style="display:none;"></pre>
+      </div>`;
+      // MarkdownをfetchしてLCMarkdownでレンダリング
+      fetch(url).then(r => r.text()).then(md => {
+        const preview = document.getElementById(previewId);
+        if (preview) preview.innerHTML = LCMarkdown.render(md);
+        const source = document.getElementById(sourceId);
+        if (source) source.textContent = md;
+        if (preview) processDiagrams(preview);
+        // 新しいタブ用にレンダリング済みHTMLのBlobを作成
+        const openLink = document.getElementById(openLinkId);
+        if (openLink) {
+          const rendered = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${escapeHtml(a.filename)}</title><style>body{font-family:"Segoe UI","Meiryo",sans-serif;max-width:800px;margin:40px auto;padding:0 20px;line-height:1.7;color:#333}pre{background:#f5f5f5;padding:12px;border-radius:6px;overflow-x:auto}code{background:#f0f0f0;padding:2px 5px;border-radius:3px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:8px}th{background:#f5f5f5}blockquote{border-left:3px solid #5865f2;margin:8px 0;padding:4px 12px;color:#666}</style></head><body>${LCMarkdown.render(md)}</body></html>`;
+          const blob = new Blob([rendered], { type: "text/html" });
+          openLink.href = URL.createObjectURL(blob);
+        }
+      }).catch(() => {});
+    } else if (ext === "puml" || ext === "plantuml" || ext === "uml") {
+      const previewId = `puml-preview-${m.id}-${a.id}`;
+      const sourceId = `puml-source-${m.id}-${a.id}`;
+      const openLinkId = `puml-open-${m.id}-${a.id}`;
+      attachHtml += `<div class="attachment attachment-puml-preview">
+        <div class="html-preview-header">
+          <span>🔀 ${escapeHtml(a.filename)}</span>
+          <div class="html-preview-actions">
+            <button class="html-preview-btn" data-frame="${previewId}" data-source="${sourceId}" title="ソース表示">&lt;/&gt;</button>
+            <a id="${openLinkId}" href="#" target="_blank" class="html-preview-open" title="新しいタブで開く">↗</a>
+          </div>
+        </div>
+        <div id="${previewId}" class="puml-preview-body"></div>
+        <pre id="${sourceId}" class="html-source-view" style="display:none;"></pre>
+      </div>`;
+      // PlantUMLをfetchしてレンダリング
+      fetch(url).then(r => r.text()).then(puml => {
+        const preview = document.getElementById(previewId);
+        const source = document.getElementById(sourceId);
+        if (source) source.textContent = puml;
+        if (preview) {
+          api("/api/render/plantuml", {
+            method: "POST", body: JSON.stringify({ source: puml }),
+          }).then(res => {
+            if (res && res.available && res.svg) {
+              preview.innerHTML = res.svg;
+              // 新しいタブ用にSVGをBlobで開けるようにする
+              const openLink = document.getElementById(openLinkId);
+              if (openLink) {
+                const blob = new Blob([res.svg], { type: "image/svg+xml" });
+                openLink.href = URL.createObjectURL(blob);
+              }
+            } else {
+              preview.innerHTML = `<pre class="code-block"><code>${escapeHtml(puml)}</code></pre>`;
+            }
+          }).catch(() => {
+            preview.innerHTML = `<pre class="code-block"><code>${escapeHtml(puml)}</code></pre>`;
+          });
+        }
+      }).catch(() => {});
     } else {
       attachHtml += `<div class="attachment"><a class="attachment-file" href="${url}" target="_blank">📎 ${escapeHtml(a.filename)} <span style="color:var(--text-muted)">(${fmtSize(a.size)})</span></a></div>`;
     }
@@ -657,15 +783,22 @@ function renderMessage(m) {
     }).join("") + `</div>`;
   }
 
-  // スレッドリンク（チャンネルのみ）
-  let threadHtml = "";
-  if (state.view === "server" && !m.parent_id) {
-    threadHtml = `<span class="thread-link" data-action="thread">スレッドで返信</span>`;
+  // 返信先の引用表示
+  let replyHtml = "";
+  if (m.parent_id) {
+    const parent = state.messages.find((p) => p.id === m.parent_id);
+    if (parent) {
+      const snippet = parent.is_deleted ? "削除されたメッセージ" : escapeHtml(parent.content).slice(0, 80);
+      replyHtml = `<div class="msg-reply-ref" data-jump="${parent.id}"><span class="reply-author">${escapeHtml(parent.author.display_name)}</span> <span class="reply-snippet">${snippet}</span></div>`;
+    } else {
+      replyHtml = `<div class="msg-reply-ref"><span class="reply-snippet">元のメッセージ</span></div>`;
+    }
   }
 
   el.innerHTML = `
     <div class="avatar lg">${avatarHtml(m.author)}</div>
     <div class="msg-body">
+      ${replyHtml}
       <div class="msg-head">
         <span class="msg-author">${escapeHtml(m.author.display_name)}</span>
         <span class="msg-time">${fmtTime(m.created_at)}</span>
@@ -673,21 +806,26 @@ function renderMessage(m) {
       ${contentHtml}
       ${attachHtml}
       ${reactHtml}
-      ${threadHtml}
     </div>
     <div class="msg-actions">
+      <button data-action="reply" title="返信">↩</button>
       <button data-action="react" title="リアクション">😊</button>
       ${isMine && !m.is_deleted ? `<button data-action="edit" title="編集">✏</button>` : ""}
       ${isMine && !m.is_deleted ? `<button data-action="delete" title="削除">🗑</button>` : ""}
     </div>`;
 
   // アクション
+  el.querySelector('[data-action="reply"]')?.addEventListener("click", () => startReply(m));
   el.querySelector('[data-action="react"]')?.addEventListener("click", (e) => {
     showEmojiPickerFor(m.id, e.currentTarget);
   });
   el.querySelector('[data-action="edit"]')?.addEventListener("click", () => editMessage(m));
   el.querySelector('[data-action="delete"]')?.addEventListener("click", () => deleteMessage(m));
-  el.querySelector('[data-action="thread"]')?.addEventListener("click", () => openThread(m));
+  el.querySelector('.msg-reply-ref[data-jump]')?.addEventListener("click", (e) => {
+    const targetId = e.currentTarget.dataset.jump;
+    const targetEl = $(`.msg[data-id="${targetId}"]`);
+    if (targetEl) { targetEl.scrollIntoView({ behavior: "smooth", block: "center" }); targetEl.classList.add("msg-highlight"); setTimeout(() => targetEl.classList.remove("msg-highlight"), 1500); }
+  });
   el.querySelectorAll(".reaction").forEach((r) => {
     r.addEventListener("click", () => toggleReaction(m.id, r.dataset.emoji));
   });
@@ -729,7 +867,7 @@ async function sendMessage() {
 
   const body = {
     content,
-    parent_id: null,
+    parent_id: state.replyTo || null,
     attachment_ids: state.pendingAttachments.map((a) => a.id),
   };
 
@@ -749,6 +887,7 @@ async function sendMessage() {
     input.style.height = "auto";
     state.pendingAttachments = [];
     renderAttachmentPreview();
+    cancelReply();
   } catch (err) {
     alert("送信に失敗しました: " + err.message);
   }
@@ -807,8 +946,7 @@ async function toggleReaction(messageId, emoji) {
 }
 
 function findMessage(id) {
-  return state.messages.find((m) => m.id === id) ||
-    (state.threadMessages || []).find((m) => m.id === id);
+  return state.messages.find((m) => m.id === id);
 }
 
 // ===== ファイルアップロード =====
@@ -872,38 +1010,21 @@ function toggleComposerEmoji() {
   picker.style.display = picker.style.display === "none" ? "grid" : "none";
 }
 
-// ===== スレッド =====
-async function openThread(parent) {
-  state.threadParentId = parent.id;
-  $("#thread-panel").style.display = "flex";
-  const tm = $("#thread-messages");
-  tm.innerHTML = "";
-  // 親メッセージ + 返信を表示
-  tm.appendChild(renderMessage(parent));
-  const replies = await api(`/api/channels/${state.currentChannelId}/messages?parent_id=${parent.id}`);
-  state.threadMessages = replies;
-  replies.forEach((r) => tm.appendChild(renderMessage(r)));
-  processDiagrams(tm);
-  tm.scrollTop = tm.scrollHeight;
+// ===== 返信 =====
+function startReply(m) {
+  if (state.editingId) cancelEdit();
+  state.replyTo = m.id;
+  const banner = $("#reply-banner");
+  const snippet = m.is_deleted ? "削除されたメッセージ" : m.content.slice(0, 60);
+  $("#reply-text").textContent = `${m.author.display_name} に返信: ${snippet}`;
+  banner.style.display = "flex";
+  $("#message-input").focus();
 }
 
-async function sendThreadReply() {
-  const input = $("#thread-input");
-  const content = input.value.trim();
-  if (!content || !state.threadParentId) return;
-  try {
-    await api(`/api/channels/${state.currentChannelId}/messages`, {
-      method: "POST",
-      body: JSON.stringify({ content, parent_id: state.threadParentId, attachment_ids: [] }),
-    });
-    input.value = "";
-  } catch (err) { alert("返信に失敗しました: " + err.message); }
-}
-
-function closeThreadPanel() {
-  $("#thread-panel").style.display = "none";
-  state.threadParentId = null;
-  state.threadMessages = [];
+function cancelReply() {
+  state.replyTo = null;
+  const banner = $("#reply-banner");
+  if (banner && !state.editingId) banner.style.display = "none";
 }
 
 // ===== WebSocket（リアルタイム） =====
@@ -942,24 +1063,30 @@ function handleRealtime(data) {
     case "message_created": {
       const msg = data.message;
       if (isCurrentTarget(msg)) {
+        state.messages.push(msg);
+        const c = $("#messages");
+        const atBottom = c.scrollHeight - c.scrollTop - c.clientHeight < 100;
+        const el = renderMessage(msg);
         if (msg.parent_id) {
-          // スレッド返信
-          if (state.threadParentId === msg.parent_id) {
-            state.threadMessages = state.threadMessages || [];
-            state.threadMessages.push(msg);
-            const tc = $("#thread-messages");
-            tc.appendChild(renderMessage(msg));
-            processDiagrams(tc);
-            tc.scrollTop = tc.scrollHeight;
+          // 返信は親メッセージの直下（既存の返信群の末尾）に挿入
+          const siblings = c.querySelectorAll(`.msg[data-parent="${msg.parent_id}"]`);
+          if (siblings.length > 0) {
+            // 最後の兄弟返信の次に挿入
+            siblings[siblings.length - 1].after(el);
+          } else {
+            // まだ返信がなければ親の直後に挿入
+            const parentEl = c.querySelector(`.msg[data-id="${msg.parent_id}"]`);
+            if (parentEl) {
+              parentEl.after(el);
+            } else {
+              c.appendChild(el);
+            }
           }
         } else {
-          state.messages.push(msg);
-          const c = $("#messages");
-          const atBottom = c.scrollHeight - c.scrollTop - c.clientHeight < 100;
-          c.appendChild(renderMessage(msg));
-          processDiagrams(c);
-          if (atBottom) c.scrollTop = c.scrollHeight;
+          c.appendChild(el);
         }
+        processDiagrams(c);
+        if (atBottom) c.scrollTop = c.scrollHeight;
         if (msg.author.id !== state.user.id) markRead();
       } else {
         // 未読カウント増加
@@ -989,15 +1116,6 @@ function updateMessageInPlace(msg) {
   if (isCurrentTarget(msg)) {
     const el = $(`.msg[data-id="${msg.id}"]`);
     if (el) { el.replaceWith(renderMessage(msg)); processDiagrams($("#messages")); }
-  }
-  // スレッド内も更新
-  if (state.threadMessages) {
-    const ti = state.threadMessages.findIndex((m) => m.id === msg.id);
-    if (ti >= 0) {
-      state.threadMessages[ti] = msg;
-      const tel = $(`#thread-messages .msg[data-id="${msg.id}"]`);
-      if (tel) { tel.replaceWith(renderMessage(msg)); processDiagrams($("#thread-messages")); }
-    }
   }
 }
 
@@ -1616,14 +1734,12 @@ function setupEvents() {
     input.style.height = Math.min(input.scrollHeight, 200) + "px";
   });
   $("#send-btn").onclick = sendMessage;
-  $("#cancel-reply").onclick = () => { if (state.editingId) cancelEdit(); };
 
-  // スレッド入力
-  $("#thread-input").addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendThreadReply(); }
-  });
-  $("#thread-send").onclick = sendThreadReply;
-  $("#close-thread").onclick = closeThreadPanel;
+  // 返信キャンセル
+  $("#cancel-reply").onclick = () => {
+    if (state.editingId) { cancelEdit(); }
+    else { cancelReply(); }
+  };
 
   // ファイル
   $("#upload-btn").onclick = () => $("#file-input").click();
@@ -1631,6 +1747,50 @@ function setupEvents() {
     const file = e.target.files[0];
     if (file) uploadFile(file);
     e.target.value = "";
+  });
+
+  // ドラッグ＆ドロップでファイル添付
+  const chatArea = $(".chat-area");
+  chatArea.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+    chatArea.classList.add("drag-over");
+  });
+  chatArea.addEventListener("dragleave", (e) => {
+    if (!chatArea.contains(e.relatedTarget)) {
+      chatArea.classList.remove("drag-over");
+    }
+  });
+  chatArea.addEventListener("drop", (e) => {
+    e.preventDefault();
+    chatArea.classList.remove("drag-over");
+    const files = e.dataTransfer.files;
+    for (const file of files) {
+      uploadFile(file);
+    }
+  });
+
+  // HTMLプレビューのソース表示切替（イベント委譲）
+  chatArea.addEventListener("click", (e) => {
+    const btn = e.target.closest(".html-preview-btn");
+    if (!btn) return;
+    const frameId = btn.dataset.frame;
+    const sourceId = btn.dataset.source;
+    const frame = document.getElementById(frameId);
+    const source = document.getElementById(sourceId);
+    if (!frame || !source) return;
+    const showingSource = source.style.display !== "none";
+    if (showingSource) {
+      source.style.display = "none";
+      frame.style.display = "block";
+      btn.textContent = "</>";
+      btn.title = "ソース表示";
+    } else {
+      source.style.display = "block";
+      frame.style.display = "none";
+      btn.textContent = "プレビュー";
+      btn.title = "プレビュー表示";
+    }
   });
 
   // クリップボードから画像ペースト（スクリーンショット等）

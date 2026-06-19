@@ -86,10 +86,11 @@
       let line = lines[i];
 
       // コードブロック ``` または ~~~
-      const fence = line.match(/^\s*(`{3,}|~{3,})\s*([\w+-]*)\s*$/);
+      const fence = line.match(/^\s*(`{3,}|~{3,})\s*([\w+-]*)(?::([^\s]+))?\s*$/);
       if (fence) {
         const marker = fence[1][0];
         const lang = (fence[2] || "").toLowerCase();
+        const filename = fence[3] || "";
         const body = [];
         i++;
         while (i < lines.length && !new RegExp("^\\s*" + marker + "{3,}\\s*$").test(lines[i])) {
@@ -104,7 +105,8 @@
           out.push(diagramBlock("plantuml", code));
         } else {
           const cls = lang ? ` class="language-${escapeHtml(lang)}"` : "";
-          out.push(`<pre class="code-block"><code${cls}>${escapeHtml(code)}</code></pre>`);
+          const filenameHtml = filename ? `<div class="code-filename">${escapeHtml(filename)}</div>` : "";
+          out.push(`<pre class="code-block">${filenameHtml}<code${cls}>${escapeHtml(code)}</code></pre>`);
         }
         continue;
       }

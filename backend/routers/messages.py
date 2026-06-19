@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
@@ -59,8 +59,6 @@ def list_channel_messages(
     stmt = select(models.Message).where(models.Message.channel_id == channel_id)
     if parent_id is not None:
         stmt = stmt.where(models.Message.parent_id == parent_id)
-    else:
-        stmt = stmt.where(models.Message.parent_id.is_(None))
     if before:
         stmt = stmt.where(models.Message.id < before)
     stmt = stmt.order_by(models.Message.id.desc()).limit(limit)
@@ -186,7 +184,8 @@ async def edit_message(
     if msg.author_id != current.id:
         raise HTTPException(status_code=403, detail="自分のメッセージのみ編集できます")
     msg.content = payload.content
-    msg.edited_at = datetime.now(timezone.utc)
+    from ..config import settings
+    msg.edited_at = datetime.now(timezone(timedelta(hours=settings.TZ_OFFSET_HOURS)))
     db.commit()
     db.refresh(msg)
     data = services.serialize_message(db, msg)

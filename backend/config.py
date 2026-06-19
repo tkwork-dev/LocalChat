@@ -67,6 +67,9 @@ class Settings:
     PLANTUML_JAR: str = os.getenv("PLANTUML_JAR", "")
     JAVA_BIN: str = os.getenv("JAVA_BIN", "java")
 
+    # タイムゾーン（UTCからのオフセット時間）。日本なら 9、UTCなら 0。
+    TZ_OFFSET_HOURS: int = int(os.getenv("TZ_OFFSET_HOURS", "9"))
+
     def ensure_dirs(self) -> None:
         """データ・アップロード用ディレクトリを作成する。"""
         Path(self.UPLOAD_DIR).mkdir(parents=True, exist_ok=True)

@@ -43,12 +43,13 @@ flowcharts) is published on GitHub Pages.
 - **Invite-code-based joining**: admins/moderators issue codes; only holders can join (configurable max uses & expiration)
 - Role management: admin / moderator / member
 - Text channels: create & browse
-- Messages: send, edit, delete, **threaded replies**, **emoji reactions**
-- **Markdown**: headings, bold, italic, strikethrough, code/code blocks, blockquotes, lists, tables, links (XSS-safe, zero-dependency custom implementation)
+- Messages: send, edit, delete, **replies** (displayed below the parent message), **emoji reactions**
+- **Markdown**: headings, bold, italic, strikethrough, code/code blocks (with filename display support), blockquotes, lists, tables, links (XSS-safe, zero-dependency custom implementation)
 - **Embedded diagrams**: Mermaid (client-side) and PlantUML (server-side via `plantuml.jar`, optional)
 - Mentions: notify via `@username`
 - DMs: 1-on-1 / group
-- File sharing: upload/download images, PDFs, Office files, etc. (stored on-premises)
+- File sharing: **drag & drop** supported. Upload/download images, PDFs, Office files, etc. (stored on-premises)
+- **File preview**: HTML / Markdown / PlantUML files display inline previews in chat (with source toggle & open-in-new-tab). Images show thumbnails as before
 - Notifications: unread badges, desktop notifications on mention (browser Notification API)
 
 ## Setup
@@ -112,6 +113,7 @@ Messages support Markdown formatting:
 
 - Headings (`# – ######`), bold (`**bold**`), italic (`*italic*`), strikethrough (`~~strike~~`)
 - Inline code (`` `code` ``), code blocks (` ```lang ... ``` `)
+- **Code block filename display**: Use ` ```ruby:filename.rb ` (language followed by `:filename`) to show the filename above the code block
 - Blockquotes (`> quote`), lists (bulleted/numbered), horizontal rule (`---`), tables (GFM), links (`[text](URL)`)
 
 All rendered with a custom zero-dependency implementation with HTML escaping and `javascript:` URL removal.
@@ -145,6 +147,32 @@ JAVA_BIN=./runtime/jdk-17.0.19+10-jre/bin/java.exe
 
 > Portable JRE (Eclipse Temurin / Amazon Corretto zip) can be extracted to `runtime/` and
 > referenced via `JAVA_BIN`. `runtime/` is in `.gitignore` — deploy per environment.
+
+## File Drag & Drop and Preview
+
+Drag and drop files onto the chat area to upload. Inline previews are displayed based on file type:
+
+| File type | Preview |
+|---|---|
+| Images (png / jpg / gif etc.) | Thumbnail image |
+| HTML (.html / .htm) | Rendered via iframe |
+| Markdown (.md) | Rendered Markdown → HTML |
+| PlantUML (.puml) | Rendered as SVG diagram |
+| Others | 📎 link |
+
+All previews include a **`</>` source toggle** button and a **`↗` open in new tab** link.
+Preview width is resizable by dragging.
+
+## Timezone Setting
+
+Message timestamps are controlled by `TZ_OFFSET_HOURS` in `.env`.
+
+```
+# Offset from UTC in hours. Japan: 9, UTC: 0.
+TZ_OFFSET_HOURS=9
+```
+
+Default is `9` (JST). Change to the appropriate offset for other regions.
 
 ## TLS (HTTPS / WSS)
 

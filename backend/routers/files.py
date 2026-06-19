@@ -69,6 +69,14 @@ def download_file(
     path = Path(settings.UPLOAD_DIR) / att.stored_name
     if not path.exists():
         raise HTTPException(status_code=404, detail="ファイル実体が存在しません")
+    # ブラウザで直接表示可能なタイプはインライン表示、それ以外はダウンロード
+    inline_types = ("text/html", "application/pdf", "text/markdown", "text/plain")
+    suffix = Path(att.filename or "").suffix.lower()
+    inline_extensions = (".html", ".htm", ".md", ".markdown", ".txt", ".puml", ".plantuml")
+    if (att.content_type.startswith("image/")
+            or att.content_type in inline_types
+            or suffix in inline_extensions):
+        return FileResponse(path, media_type=att.content_type)
     return FileResponse(
         path, media_type=att.content_type, filename=att.filename
     )

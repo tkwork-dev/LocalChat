@@ -232,6 +232,64 @@ input, textarea { font-family: inherit; }
 }
 .attachment-file:hover { background: var(--bg-hover); }
 
+/* HTMLプレビュー */
+.attachment-html-preview {
+  border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+  max-width: 100%; width: 600px; background: #fff;
+  resize: horizontal; overflow: auto; min-width: 280px;
+}
+.html-preview-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 12px; background: var(--bg-elevated); border-bottom: 1px solid var(--border);
+  font-size: 13px; color: var(--text);
+}
+.html-preview-actions { display: flex; align-items: center; gap: 8px; }
+.html-preview-btn {
+  background: none; border: 1px solid var(--border); border-radius: 4px;
+  padding: 2px 8px; font-size: 12px; color: var(--text-muted); cursor: pointer;
+  font-family: monospace;
+}
+.html-preview-btn:hover { background: var(--bg-hover); color: var(--text-strong); }
+.html-preview-open {
+  color: var(--text-muted); text-decoration: none; font-size: 16px; line-height: 1;
+}
+.html-preview-open:hover { color: var(--text-strong); }
+.html-preview-frame {
+  width: 100%; height: 400px; border: none; display: block; background: #fff;
+}
+.html-source-view {
+  width: 100%; max-height: 400px; overflow: auto; margin: 0; padding: 12px;
+  font-size: 12px; font-family: "Consolas", "Monaco", monospace;
+  background: #1e1e1e; color: #d4d4d4; white-space: pre-wrap; word-wrap: break-word;
+}
+
+/* Markdownプレビュー */
+.attachment-md-preview {
+  border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+  max-width: 100%; width: 600px; background: var(--bg-app);
+  resize: horizontal; overflow: auto; min-width: 280px;
+}
+.md-preview-body {
+  padding: 12px 16px; max-height: 400px; overflow: auto;
+}
+
+/* PlantUMLプレビュー */
+.attachment-puml-preview {
+  border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+  max-width: 100%; width: 600px; background: #fff;
+  resize: horizontal; overflow: auto; min-width: 280px;
+}
+.puml-preview-body {
+  padding: 12px; max-height: 500px; overflow: auto; text-align: center;
+}
+.puml-preview-body svg { max-width: 100%; height: auto; }
+
+/* ドラッグ＆ドロップオーバーレイ */
+.chat-area.drag-over {
+  outline: 2px dashed var(--accent, #5865f2); outline-offset: -4px;
+  background: color-mix(in srgb, var(--accent, #5865f2) 5%, var(--bg-app));
+}
+
 .reactions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .reaction {
   display: inline-flex; align-items: center; gap: 4px; background: var(--bg-elevated);
@@ -240,8 +298,17 @@ input, textarea { font-family: inherit; }
 }
 .reaction.mine { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 .reaction:hover { border-color: var(--accent); }
-.thread-link { color: var(--accent); font-size: 12px; margin-top: 4px; cursor: pointer; display: inline-block; }
-.thread-link:hover { text-decoration: underline; }
+/* 返信引用バー */
+.msg-reply-ref {
+  display: flex; align-items: center; gap: 6px; padding: 2px 0 4px 0;
+  font-size: 12px; color: var(--text-muted); cursor: pointer;
+  border-left: 2px solid var(--accent, #5865f2); padding-left: 8px; margin-bottom: 2px;
+}
+.msg-reply-ref:hover { color: var(--text); }
+.msg-reply { margin-left: 28px; border-left: 2px solid var(--border); padding-left: 10px; }
+.reply-author { font-weight: 600; color: var(--text); }
+.reply-snippet { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 300px; }
+.msg-highlight { background: color-mix(in srgb, var(--accent, #5865f2) 15%, transparent); transition: background 0.3s; }
 
 /* 入力欄 */
 .composer-wrap { padding: 0 16px 18px; position: relative; }
@@ -330,15 +397,6 @@ input, textarea { font-family: inherit; }
   .help-row { grid-template-columns: 1fr; }
 }
 
-/* スレッドパネル */
-.thread-panel {
-  position: fixed; right: 0; top: 0; height: 100vh; width: 400px; max-width: 100%;
-  background: var(--bg-app); border-left: 1px solid var(--border);
-  display: flex; flex-direction: column; z-index: 60; box-shadow: var(--shadow);
-}
-.thread-header { height: 52px; padding: 0 16px; display: flex; align-items: center;
-  justify-content: space-between; border-bottom: 1px solid var(--border); color: var(--text-strong); font-weight: 700; }
-
 .mini-btn { color: var(--text-muted); font-size: 15px; padding: 5px 8px; border-radius: 6px; }
 .mini-btn:hover { color: var(--text-strong); background: var(--bg-hover); }
 
@@ -370,7 +428,13 @@ input, textarea { font-family: inherit; }
 }
 .msg-content pre.code-block {
   background: var(--code-bg); border: 1px solid var(--border);
-  border-radius: 8px; padding: 12px; margin: 6px 0; overflow-x: auto;
+  border-radius: 8px; padding: 12px; margin: 6px 0; overflow-x: auto; position: relative;
+}
+.msg-content pre.code-block .code-filename {
+  font-size: 12px; font-weight: 600; color: var(--text-muted);
+  background: var(--bg-elevated); border: 1px solid var(--border);
+  border-radius: 4px; padding: 2px 8px; margin-bottom: 8px;
+  display: inline-block; font-family: Consolas, "Courier New", monospace;
 }
 .msg-content pre.code-block code {
   background: none; padding: 0; white-space: pre;

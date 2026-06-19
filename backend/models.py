@@ -1,7 +1,7 @@
 """SQLAlchemy ORM モデル定義。"""
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import (
     Boolean,
@@ -18,7 +18,8 @@ from .database import Base
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    from .config import settings
+    return datetime.now(timezone(timedelta(hours=settings.TZ_OFFSET_HOURS)))
 
 
 class User(Base):
